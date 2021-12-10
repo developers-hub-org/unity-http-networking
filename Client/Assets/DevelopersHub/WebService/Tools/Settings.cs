@@ -1,17 +1,18 @@
-﻿namespace DevelopersHub
+namespace DevelopersHub
 {
+
     using System.IO;
-    using UnityEditor;
     using UnityEngine;
+
+    #if UNITY_EDITOR
+    using UnityEditor;
+    #endif
 
     /// <summary>
     /// Collection of connection-relevant settings.
     /// </summary>
     public class Settings : ScriptableObject
     {
-
-        private static Settings instance = null;
-        public static Settings Instance { get { if (instance == null) { instance = FindInstance(); } return instance; } }
 
         [Tooltip("Link to your php file on the server.")]
         [SerializeField] private string apiAddress = "https://demo.com/dh_unity_server_public/api.php";
@@ -51,18 +52,26 @@
             }
         }
 
-        [MenuItem("Window/Developers Hub/Web Service/Network")]
-        public static void CreateNetwork()
+        [MenuItem("Window/Developers Hub/Web Service/Network")] public static void CreateNetwork()
         {
             Network[] networks = FindObjectsOfType<Network>();
+            Settings settings = FindInstance();
             if (networks.Length == 0)
             {
                 Network network = new GameObject("WebService").AddComponent<Network>();
+                if (settings)
+                {
+                    network.settings = settings;
+                }
                 EditorUtility.FocusProjectWindow();
                 Selection.activeObject = network;
             }
             else
             {
+                if (settings)
+                {
+                    networks[0].settings = settings;
+                }
                 EditorUtility.FocusProjectWindow();
                 Selection.activeObject = networks[networks.Length - 1];
                 if (networks.Length > 1)
@@ -74,7 +83,6 @@
                 }
             }
         }
-        #endif
 
         private static Settings FindInstance()
         {
@@ -86,6 +94,7 @@
             }
             return null;
         }
+        #endif
 
     }
 }
