@@ -1,4 +1,4 @@
-﻿namespace DevelopersHub
+namespace DevelopersHub
 {
 
     using System.Collections;
@@ -11,6 +11,8 @@
     public class Network : MonoBehaviour
     {
 
+        [SerializeField] private Settings _settings = null;
+        public Settings settings { get { return _settings; } set { _settings = value; } }
         private static Network instance = null;
         public static Network Instance { get { if (instance == null) { instance = FindObjectOfType<Network>(); } return instance; } }
         public delegate void ServerDataCallback(int requestID, string message, JsonData data);
@@ -84,13 +86,13 @@
             #region Initialize Form
             WWWForm form = new WWWForm();
             form.AddField("hash0", iv);
-            form.AddField("hash1", Encryption.EncryptAES(sb.ToString(), iv, Settings.Instance.EncryptionKey));
-            form.AddField("hash2", Encryption.EncryptMD5(validation, Settings.Instance.MD5Key));
+            form.AddField("hash1", Encryption.EncryptAES(sb.ToString(), iv, _settings.EncryptionKey));
+            form.AddField("hash2", Encryption.EncryptMD5(validation, _settings.MD5Key));
             #endregion
 
             #region Web Request Method
             string result = "";
-            using (UnityWebRequest request = UnityWebRequest.Post(Settings.Instance.ApiAddress, form))
+            using (UnityWebRequest request = UnityWebRequest.Post(_settings.ApiAddress, form))
             {
                 yield return request.SendWebRequest();
                 if (request.isNetworkError || request.isHttpError)
@@ -132,9 +134,9 @@
             try
             {
                 JsonData mainJason = JsonMapper.ToObject(result);
-                JsonData json = JsonMapper.ToObject(Encryption.DecryptAES(mainJason["hash0"].ToString(), mainJason["hash1"].ToString(), Settings.Instance.EncryptionKey));
+                JsonData json = JsonMapper.ToObject(Encryption.DecryptAES(mainJason["hash0"].ToString(), mainJason["hash1"].ToString(), _settings.EncryptionKey));
                 string message = json["message"].ToString();
-                if (Encryption.EncryptMD5(message, Settings.Instance.MD5Key) == mainJason["hash2"].ToString())
+                if (Encryption.EncryptMD5(message, _settings.MD5Key) == mainJason["hash2"].ToString())
                 {
                     OnRequestResponded?.Invoke(requestID, message, (message == "SUCCESSFUL" && json.ContainsKey("data")) ? json["data"] : null);
                 }
