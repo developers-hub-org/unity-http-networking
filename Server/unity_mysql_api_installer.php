@@ -2,16 +2,17 @@
   ini_set('display_errors', '0');
   if (!empty($_POST))
   {
-    if(isset($_POST['project_name']) && isset($_POST['database_name']) && isset($_POST['database_user']) && isset($_POST['database_pass']) && isset($_POST['aes_key']) && isset($_POST['md5_key']))
+    if(isset($_POST['project_name']) && isset($_POST['database_name']) && isset($_POST['database_user']) && isset($_POST['database_host']) && isset($_POST['database_pass']) && isset($_POST['aes_key']) && isset($_POST['md5_key']))
     {
       $project = trim($_POST['project_name']);
       $database = trim($_POST['database_name']);
       $username = trim($_POST['database_user']);
       $password = trim($_POST['database_pass']);
+      $host = trim($_POST['database_host']);
       $aes = trim($_POST['aes_key']);
       $md5 = trim($_POST['md5_key']);
 	    unset($_POST);
-      $connection = mysqli_connect("localhost", $username, $password, $database);
+      $connection = mysqli_connect($host, $username, $password, $database);
       if(mysqli_connect_errno())
       {
         display_error("Database credentials are not valid.");
@@ -35,7 +36,12 @@
           }
           if(download_repository($public_path, $private_path, $project_name, $database, $username, $password, $aes, $md5))
           {
-            $api_link = get_base_url() . "unity_projects/" . $project_name . "/api.php";
+            $api_link = get_base_url();
+            if(substr($api_link, -1) != "/")
+            {
+              $api_link =  $api_link . "/";
+            }
+            $api_link = $api_link . "unity_projects/" . $project_name . "/api.php";
             if(is_localhost())
             {
               $api_link = "http://localhost/unity_projects/" . $project_name . "/api.php";
@@ -97,22 +103,31 @@
     
     if(file_exists($private_path . "dh_unity_server_core.php")) {unlink($private_path . "dh_unity_server_core.php");}
     $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/dh_unity_server_core.php", $private_path);
-    if(!$downloaded){return false;}
-    
+    if(!$downloaded)
+    {
+      $private_path = $public_path;
+      if(file_exists($private_path . "dh_unity_server_core.php")) {unlink($private_path . "dh_unity_server_core.php");}
+      $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/dh_unity_server_core.php", $private_path);
+      if(!$downloaded){return false;}
+    }
+
     if(file_exists($public_path . "files.ini")) {unlink($public_path . "files.ini");}
     $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_public/files.ini", $public_path);
     if(!$downloaded){return false;}
-    
+
     $prefix = generate_random_string(rand(10, 20));
     $core_file_name = "unity_core_" . $project_name . "_" . $prefix . ".php";
     $link_file_name = "unity_link_" . $project_name . "_" . $prefix . ".ini";
     rename($private_path . "dh_unity_server_core.php", $private_path . $core_file_name);
     file_put_contents($public_path . "files.ini", "core_file_name = " . $core_file_name . "\n" . "link_file_name = " . $link_file_name . "");
-    
+    chmod($private_path . $core_file_name, 0600);
+    chmod($public_path . "files.ini", 0600);
+
     if(file_exists($private_path . "config.php")) {unlink($private_path . "config.php");}
     $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/config.php", $private_path);
     if(!$downloaded){return false;}
-    
+    chmod($private_path . "config.php", 0600);
+
     $confog_data = "
     <?php
       define('DB_NAME', '".$database."');
@@ -127,17 +142,20 @@
     if(file_exists($private_path . "connection.php")) {unlink($private_path . "connection.php");}
     $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/connection.php", $private_path);
     if(!$downloaded){return false;}
-    
+    chmod($private_path . "connection.php", 0600);
+
     if(file_exists($private_path . "encryption.php")) {unlink($private_path . "encryption.php");}
     $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/encryption.php", $private_path);
     if(!$downloaded){return false;}
-    
+    chmod($private_path . "encryption.php", 0600);
+
     if(!file_exists($private_path . "response.php"))
     {
       $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/response.php", $private_path);
       if(!$downloaded){return false;}
     }
-    
+    chmod($private_path . "response.php", 0600);
+
     return true;
   }
   
@@ -153,7 +171,7 @@
   
   function get_base_url()
   {
-	 return sprintf("%s://%s", isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off' ? 'https' : 'http', $_SERVER['SERVER_NAME']);
+	  return sprintf("%s://%s", isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off' ? 'https' : 'http', $_SERVER['SERVER_NAME']);
   }
 
   function is_localhost() 
@@ -161,7 +179,7 @@
 	  $whitelist = array( '127.0.0.1', '::1');
 	  if (in_array($_SERVER['REMOTE_ADDR'], $whitelist)) 
 	  {
-		return true;
+		  return true;
 	  }
 	  return false;
   }
@@ -424,6 +442,7 @@
                     <input type="text" id="project_name" name="project_name" placeholder="Project Name ..."><br/>
                     <input type="text" id="aes_key" name="aes_key" placeholder="AES Encryption Key ..."><br/>
                     <input type="text" id="md5_key" name="md5_key" placeholder="MD5 Encryption Key ..."><br/>
+                    <input type="text" id="database_host" name="database_host" placeholder="Database Host ..." value="localhost"><br/>
                     <input type="text" id="database_name" name="database_name" placeholder="Database Name ..."><br/>
                     <input type="text" id="database_user" name="database_user" placeholder="Database Username ..."><br/>
                     <input type="text" id="database_pass" name="database_pass" placeholder="Database Password ..."><br/>
@@ -457,6 +476,7 @@
     var database = document.getElementById("database_name").value.trim();
     var username = document.getElementById("database_user").value.trim();
     var password = document.getElementById("database_pass").value.trim();
+    var host = document.getElementById("database_host").value.trim();
     var aes = document.getElementById("aes_key").value.trim();
     var md5 = document.getElementById("md5_key").value.trim();
     if (isStringNullOrEmpty(project)) 
@@ -475,6 +495,10 @@
     {
 	    displayError("MD5 key can not be empty.");
     }
+    else if (isStringNullOrEmpty(host)) 
+    {
+	    displayError("Database host can not be empty.");
+    }
     else if (isStringNullOrEmpty(database)) 
     {
 	    displayError("Database name can not be empty.");
@@ -491,6 +515,7 @@
       document.getElementById('database_name').readOnly = true;
       document.getElementById('database_user').readOnly = true;
       document.getElementById('database_pass').readOnly = true;
+      document.getElementById('database_host').readOnly = true;
       document.getElementById('aes_key').readOnly = true;
       document.getElementById('md5_key').readOnly = true;
       document.getElementById('dataForm').submit();
