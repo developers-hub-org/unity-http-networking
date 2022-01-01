@@ -11,31 +11,39 @@
 	{
     	if(file_exists("files.ini"))
     	{
-    	    $files_ini = parse_ini_file("files.ini");
-    	    $link_ini_path = get_base_path() . DIRECTORY_SEPARATOR . $files_ini['link_file_name'];
-    	    $config = null;
-    	    $create_link = true;
-    	    if(is_file($link_ini_path))
-        	{
-                $link_ini = parse_ini_file($link_ini_path);
-                if(is_file($link_ini['config_path']))
-                {
-                    $config = $link_ini['config_path'];
-                    $create_link = false;
-                }
-                else
-                {
-                    unlink($link_ini_path);
-                }
-            }
-        	if($create_link)
-        	{
-        	    $config = get_file_path($files_ini['core_file_name']);
-                if($config != null)
-                {
-                    file_put_contents($link_ini_path, "config_path = \"" . $config . "\"");
-                }
-        	}
+			$files_ini = parse_ini_file("files.ini");
+			if(file_exists($files_ini['core_file_name']))
+			{
+				$config = $files_ini['core_file_name'];
+				$create_link = false;
+			}
+			else
+			{
+				$link_ini_path = get_base_path() . DIRECTORY_SEPARATOR . $files_ini['link_file_name'];
+				$config = null;
+				$create_link = true;
+				if(is_file($link_ini_path))
+				{
+					$link_ini = parse_ini_file($link_ini_path);
+					if(is_file($link_ini['config_path']))
+					{
+						$config = $link_ini['config_path'];
+						$create_link = false;
+					}
+					else
+					{
+						unlink($link_ini_path);
+					}
+				}
+				if($create_link)
+				{
+					$config = get_file_path($files_ini['core_file_name']);
+					if($config != null)
+					{
+						file_put_contents($link_ini_path, "config_path = \"" . $config . "\"");
+					}
+				}
+			}
     	    if($config != null)
     	    {
     	        include_once $config;
