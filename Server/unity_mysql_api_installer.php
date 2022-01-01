@@ -34,7 +34,7 @@
           {
             mkdir($public_path, 0777, true);
           }
-          if(download_repository($public_path, $private_path, $project_name, $database, $username, $password, $aes, $md5))
+          if(download_repository($public_path, $private_path, $project_name, $database, $username, $password, $aes, $md5, $host))
           {
             $api_link = get_base_url();
             if(substr($api_link, -1) != "/")
@@ -95,7 +95,7 @@
 	  exit();
   }
   
-  function download_repository($public_path, $private_path, $project_name, $database, $username, $password, $aes, $md5)
+  function download_repository($public_path, $private_path, $project_name, $database, $username, $password, $aes, $md5, $host)
   {
     if(file_exists($public_path . "api.php")) {unlink($public_path . "api.php");}
     $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_public/api.php", $public_path);
@@ -133,7 +133,7 @@
       define('DB_NAME', '".$database."');
       define('DB_USER', '".$username."');
       define('DB_PASSWORD', '".$password."');
-      define('DB_HOST', 'localhost');
+      define('DB_HOST', '".$host."');
       define('AES_PASSWORD', '".$aes."');
       define('MD5_PASSWORD', '".$md5."');
       ?>";
@@ -246,7 +246,7 @@
         location.reload();
         }
       </script>
-      <strong>".$message." Click <a id=\"link_id\" href=\"\">here</a> to try again.</strong>
+      ".$message." Click <a id=\"link_id\" href=\"\">here</a> to try again.
       </div>
     </div>
     </body>
@@ -438,7 +438,7 @@
                 </tr>
               </table>
                 <div class="title">Unity MySQL API Installer</div><br/>
-                  <form id="dataForm" action="?" method="post">
+                  <form id="dataForm" action="?" method="post" autocomplete="off">
                     <input type="text" id="project_name" name="project_name" placeholder="Project Name ..."><br/>
                     <input type="text" id="aes_key" name="aes_key" placeholder="AES Encryption Key ..."><br/>
                     <input type="text" id="md5_key" name="md5_key" placeholder="MD5 Encryption Key ..."><br/>
@@ -553,7 +553,7 @@
   
   function displayError(message)
   {
-	  var data = "</br><div class=\"alert\"><span class=\"closebtn\" onclick=\"this.parentElement.style.display='none';\">&times;</span> <strong>"+message+"</strong></div>";
+	  var data = "</br><div class=\"alert\"><span class=\"closebtn\" onclick=\"this.parentElement.style.display='none';\">&times;</span>"+message+"</div>";
     document.getElementById("info").innerHTML = data;
   }
 </script>
