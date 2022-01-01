@@ -12,7 +12,7 @@
     	if(file_exists("files.ini"))
     	{
     	    $files_ini = parse_ini_file("files.ini");
-    	    $link_ini_path = get_base_path() . "/" . $files_ini['link_file_name'];
+    	    $link_ini_path = get_base_path() . DIRECTORY_SEPARATOR . $files_ini['link_file_name'];
     	    $config = null;
     	    $create_link = true;
     	    if(is_file($link_ini_path))
@@ -64,9 +64,28 @@
 	
 	function get_base_path()
 	{
-	    $path = getcwd();
-        $path = substr($path, 0, strpos($path, "public_html"));
-        return $path;
+		$path = correct_path(getcwd());
+		if(substr_count($path, DIRECTORY_SEPARATOR . 'public_html') == 1)
+		{
+			$path = substr($path, 0, strpos($path, DIRECTORY_SEPARATOR . "public_html"));
+			return $path . DIRECTORY_SEPARATOR;
+		}
+		else if(substr_count($path, DIRECTORY_SEPARATOR . 'htdocs') == 1)
+		{
+			$path = substr($path, 0, strpos($path, DIRECTORY_SEPARATOR . "htdocs"));
+			return $path . DIRECTORY_SEPARATOR;
+		}
+		else if(substr_count($path, DIRECTORY_SEPARATOR . 'www') == 1)
+		{
+			$path = substr($path, 0, strpos($path, DIRECTORY_SEPARATOR . "www"));
+			return $path . DIRECTORY_SEPARATOR;
+		}
+		return null;
 	}
 	
+	function correct_path($path)
+	{
+		return str_replace(array('/', '\\'), DIRECTORY_SEPARATOR, $path);
+	}
+  
 ?>
