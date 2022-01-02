@@ -19,7 +19,50 @@
       }
       else
       {
+        $accounts_table = mysqli_query($connection, "SELECT 1 from accounts LIMIT 1");
+        if($accounts_table)
+        {
+          $queries = array(
+            "ALTER TABLE accounts ADD COLUMN id int(11) AUTO_INCREMENT PRIMARY KEY",
+            "ALTER TABLE accounts ADD COLUMN username varchar(255) NOT NULL",
+            "ALTER TABLE accounts ADD COLUMN password varchar(255) NOT NULL",
+            "ALTER TABLE accounts ADD COLUMN score int(11) NOT NULL DEFAULT 0",
+            "ALTER TABLE accounts ADD COLUMN blocked int(11) NOT NULL DEFAULT 0"
+          );
+          for($i = 0; $i < count($queries); $i++) 
+          {
+            mysqli_query($connection, $queries[$i]);
+          }
+        }
+        else
+        {
+          $query = "CREATE TABLE IF NOT EXISTS accounts(id int(11) AUTO_INCREMENT, username varchar(255) NOT NULL, password varchar(255) NOT NULL, score int(11) DEFAULT 0, blocked int(11) DEFAULT 0, PRIMARY KEY (id))";
+          mysqli_query($connection, $query);
+        }
+        $sessions_table = mysqli_query($connection, "SELECT 1 from sessions LIMIT 1");
+        if($sessions_table)
+        {
+          $queries = array(
+            "ALTER TABLE sessions ADD COLUMN id int(11) AUTO_INCREMENT PRIMARY KEY",
+            "ALTER TABLE sessions ADD COLUMN account_id int(11)",
+            "ALTER TABLE sessions ADD COLUMN username varchar(255) NOT NULL",
+            "ALTER TABLE sessions ADD COLUMN session varchar(50) NOT NULL",
+            "ALTER TABLE sessions ADD COLUMN ip varchar(50) NOT NULL",
+            "ALTER TABLE sessions ADD COLUMN version varchar(50) NOT NULL",
+            "ALTER TABLE sessions ADD COLUMN activity DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+          );
+          for($i = 0; $i < count($queries); $i++) 
+          {
+            mysqli_query($connection, $queries[$i]);
+          }
+        }
+        else
+        {
+          $query = "CREATE TABLE IF NOT EXISTS sessions(id int(11) AUTO_INCREMENT, account_id int(11), username varchar(255) NOT NULL, session varchar(50) NOT NULL, ip varchar(50) NOT NULL, version varchar(50) NOT NULL, activity DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (id))";
+          mysqli_query($connection, $query);
+        }
         mysqli_close($connection);
+
         $path = get_base_path();
         if($path != null)
         {
