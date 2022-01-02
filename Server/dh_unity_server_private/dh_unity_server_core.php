@@ -26,37 +26,49 @@
 				{
 					if(md5($json->validation . MD5_PASSWORD) == $hash2)
 					{
-					    include_once ($path . "/response.php");
-					    try 
-					    {
-                            $result["data"] = get_response($con, $json);
-                            $result["message"] = 'SUCCESSFUL';
-                        } 
-                        catch (Exception $e) 
-                        {
-                            $result["message"] = 'ERROR_QUERY';
-                            $result["error"] = $e->getMessage();
-                        }
+						include_once ($path . "/control.php");
+						if(UNDER_MAINTENANCE == true)
+						{
+							$result["error"] = 'UNDER_MAINTENANCE';
+						}
+						else if(FORCE_CLIENT_UPDATE_TO_SERVER_VERSION == true && $json->version != SERVER_VERSION)
+						{	
+							$result["error"] = 'UPDATE_REQUIRED';
+						}
+						else
+						{
+							include_once ($path . "/response.php");
+							try 
+							{
+								$result["data"] = get_response($con, $json, $path);
+								$result["message"] = 'SUCCESSFUL';
+							} 
+							catch (Exception $e) 
+							{
+								$result["message"] = 'ERROR_QUERY';
+								$result["error"] = $e->getMessage();
+							}
+						}
 					}
 					else
 					{
-						$result["message"] = 'ERROR_VALIDATION_SERVER';
+						$result["error"] = 'ERROR_VALIDATION_SERVER';
 					}
 				}
 				else
 				{
-					$result["message"] = 'ERROR_PACKAGE';
+					$result["error"] = 'ERROR_PACKAGE';
 				}
 				mysqli_close($con);
 			}
 			else
 			{
-				$result["message"] = 'ERROR_CONNECTION';
+				$result["error"] = 'ERROR_CONNECTION';
 			}
 		}
 		else
 		{
-			$result["message"] = 'ERROR_SERVER_CONFIG';
+			$result["error"] = 'ERROR_SERVER_CONFIG';
 		}
 		$iv = generateIV(16);
 		$response["hash0"] = encrypt(json_encode($result), AES_PASSWORD, $iv);
