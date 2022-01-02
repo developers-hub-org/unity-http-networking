@@ -139,6 +139,11 @@
       ?>";
     file_put_contents($private_path . "config.php", $confog_data);
     
+    if(file_exists($private_path . "control.php")) {unlink($private_path . "control.php");}
+    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/control.php", $private_path);
+    if(!$downloaded){return false;}
+    chmod($private_path . "control.php", 0600);
+
     if(file_exists($private_path . "connection.php")) {unlink($private_path . "connection.php");}
     $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/connection.php", $private_path);
     if(!$downloaded){return false;}
@@ -148,6 +153,11 @@
     $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/encryption.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "encryption.php", 0600);
+
+    if(file_exists($private_path . "core_response.php")) {unlink($private_path . "core_response.php");}
+    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/core_response.php", $private_path);
+    if(!$downloaded){return false;}
+    chmod($private_path . "core_response.php", 0600);
 
     if(!file_exists($private_path . "response.php"))
     {
