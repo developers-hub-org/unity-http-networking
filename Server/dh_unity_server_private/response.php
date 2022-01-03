@@ -2,12 +2,16 @@
 
     function get_response($connection, $json, $path)
     {
-
-		// -> Server Checks (Do Not Remove)
+		
+		// -> Core Checks (Do Not Remove)
 		include_once ($path . "/control.php");
-		// TODO : Check blocked ip here
+		include_once ($path . "/core_response.php");
+		if($json->request >= 987650)
+		{
+			return get_core_response($connection, $json, $path);
+		}
 		// <-
-
+		
 		switch($json->request)
 		{
 			case 0:
@@ -62,11 +66,6 @@
 				//---------------------------------------------
 				
 				break;
-			// Do not remove anythig below this line
-			case 987650:
-			case 987651:
-				include_once ($path . "/core_response.php");
-				return get_core_response($connection, $json, $path);
 		}
 		return 'NULL';
     }
