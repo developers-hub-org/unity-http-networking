@@ -66,10 +66,11 @@
 							$query = "INSERT INTO sessions (account_id, username, session, ip, version) VALUES($account_id , '$json->username', '$json->session', '$ip', '$json->version')";
 							mysqli_query($connection, $query);
 						}
-						$auth = array();
-						$auth["message"] = 'SUCCESSFUL';
-						$auth["sync_period"] = CONNECTION_CHECK_PERIOD;
-                    	return $auth;
+						$response = array();
+						$response["message"] = 'SUCCESSFUL';
+						$response["sync_period"] = CONNECTION_CHECK_PERIOD;
+						$response["now"] = get_current_datetime($connection);
+                    	return $response;
 					}
 					else
 					{
@@ -141,10 +142,11 @@
 					$sync_data = array();
 					$sync_data["message"] = 'SUCCESSFUL';
 					$sync_data["unread_messages"] = get_unread_messages_count($connection, $auth["account_id"]);
+					$sync_data["now"] = get_current_datetime($connection);
 					$undelivered_messages = get_undelivered_messages($connection, $auth["account_id"], MAX_MESSAGE_PER_PACKAGE, true);
 					if($undelivered_messages != null)
-					{
-						array_push($sync_data, $undelivered_messages);
+					{	
+						$sync_data["undelivered_messages"] = $undelivered_messages;
 					}
 					
 					
@@ -210,17 +212,17 @@
 		$result = mysqli_query($connection, $query);
 		if($result && mysqli_num_rows($result) == 1)
 		{
-			$password = "";
+			$pass = "";
 			$blocked = 1;
 			$account_id = 0;
 			while($row = mysqli_fetch_assoc($result))
 			{
-				$password = $row['password'];
+				$pass = $row['password'];
 				$blocked = $row['blocked'];
 				$account_id = $row['id'];
 			}
 			$response["account_id"] = $account_id;
-			if($password == $json->password)
+			if($password == $pass)
 			{
 				// Check if the account has been suspended
 				if($blocked > 0)
@@ -237,7 +239,7 @@
 					else
 					{
 						// Check if there is a session for this user
-						$query = "SELECT id FROM sessions WHERE account_id = $account_id AND ip = '$ip' AND session = '$json->session'";
+						$query = "SELECT id FROM sessions WHERE account_id = $account_id AND ip = '$ip' AND session = '$session'";
 						$result = mysqli_query($connection, $query);
 						if($result && mysqli_num_rows($result) > 0)
 						{
@@ -273,7 +275,7 @@
 	function get_unread_messages_count($connection, $account_id)
 	{
 		$count = 0;
-		$query = "SELECT COUNT(id) AS count FROM messages WHERE receiver_id = $auth[\"account_id\"] AND seen = 0";
+		$query = "SELECT COUNT(id) AS count FROM messages WHERE receiver_id = $account_id AND seen = 0";
 		$result = mysqli_query($connection, $query);
 		if($result && mysqli_num_rows($result) > 0)
 		{
@@ -287,8 +289,7 @@
 	
 	function get_undelivered_messages($connection, $account_id, $max, $mark_as_delivered)
 	{
-		// $query = "SELECT id, sender_id, receiver_type, encryption_key, message_text FROM messages WHERE receiver_id = $auth[\"account_id\"] AND delivered = 0 ORDER BY send_time DESC LIMIT $max";
-		$query = "SELECT messages.id, messages.sender_id, messages.receiver_type, messages.encryption_key, messages.message_text, accounts.username FROM messages INNER JOIN accounts ON messages.sender_id = accounts.id WHERE messages.receiver_id = $auth[\"account_id\"] AND messages.delivered = 0 ORDER BY messages.send_time DESC LIMIT $max";
+		$query = "SELECT messages.id, messages.sender_id, messages.receiver_type, messages.encryption_key, messages.message_text, messages.send_time, accounts.username FROM messages INNER JOIN accounts ON messages.sender_id = accounts.id WHERE messages.receiver_id = $account_id AND messages.delivered = 0 ORDER BY messages.send_time DESC LIMIT $max";
 		$result = mysqli_query($connection, $query);
 		if($result && mysqli_num_rows($result) > 0)
 		{
@@ -299,8 +300,8 @@
 			}
 			if($mark_as_delivered)
 			{
-				$query = "UPDATE messages SET delivered = 1 WHERE receiver_id = $auth[\"account_id\"] AND delivered = 0 ORDER BY send_time DESC LIMIT $max";
-				mysqli_num_rows($result);
+				$query = "UPDATE messages SET delivered = 1 WHERE receiver_id = $account_id AND delivered = 0 ORDER BY send_time DESC LIMIT $max";
+				mysqli_query($connection, $query);
 			}
 			return $undelivered_messages;
 		}
@@ -318,4 +319,17 @@
 		return false;
 	}
 	
+	function get_current_datetime($connection)
+	{
+		$result = mysqli_query($connection, "SELECT CURRENT_TIMESTAMP() AS now");
+		if($result)
+		{
+			while($row = mysqli_fetch_assoc($result))
+			{
+				return $row['now'];
+			}
+		}
+		return date("Y-m-d H:i:s", time());
+	}
+
 ?>
