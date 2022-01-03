@@ -23,11 +23,11 @@
         if($accounts_table)
         {
           $queries = array(
-            "ALTER TABLE accounts ADD COLUMN id int(11) AUTO_INCREMENT PRIMARY KEY",
-            "ALTER TABLE accounts ADD COLUMN username varchar(255) NOT NULL",
-            "ALTER TABLE accounts ADD COLUMN password varchar(255) NOT NULL",
-            "ALTER TABLE accounts ADD COLUMN score int(11) NOT NULL DEFAULT 0",
-            "ALTER TABLE accounts ADD COLUMN blocked int(11) NOT NULL DEFAULT 0"
+            "ALTER TABLE accounts ADD COLUMN id INT(11) AUTO_INCREMENT PRIMARY KEY",
+            "ALTER TABLE accounts ADD COLUMN username VARCHAR(255)",
+            "ALTER TABLE accounts ADD COLUMN password VARCHAR(255)",
+            "ALTER TABLE accounts ADD COLUMN score INT(11) DEFAULT 0",
+            "ALTER TABLE accounts ADD COLUMN blocked INT(11) DEFAULT 0"
           );
           for($i = 0; $i < count($queries); $i++) 
           {
@@ -36,20 +36,21 @@
         }
         else
         {
-          $query = "CREATE TABLE IF NOT EXISTS accounts(id int(11) AUTO_INCREMENT, username varchar(255) NOT NULL, password varchar(255) NOT NULL, score int(11) DEFAULT 0, blocked int(11) DEFAULT 0, PRIMARY KEY (id))";
+          $query = "CREATE TABLE IF NOT EXISTS accounts(id INT(11) AUTO_INCREMENT, username VARCHAR(255) NOT NULL, password VARCHAR(255) NOT NULL, score INT(11) DEFAULT 0, blocked INT(11) DEFAULT 0, PRIMARY KEY (id))";
           mysqli_query($connection, $query);
         }
         $sessions_table = mysqli_query($connection, "SELECT 1 from sessions LIMIT 1");
         if($sessions_table)
         {
           $queries = array(
-            "ALTER TABLE sessions ADD COLUMN id int(11) AUTO_INCREMENT PRIMARY KEY",
-            "ALTER TABLE sessions ADD COLUMN account_id int(11)",
-            "ALTER TABLE sessions ADD COLUMN username varchar(255) NOT NULL",
-            "ALTER TABLE sessions ADD COLUMN session varchar(50) NOT NULL",
-            "ALTER TABLE sessions ADD COLUMN ip varchar(50) NOT NULL",
-            "ALTER TABLE sessions ADD COLUMN version varchar(50) NOT NULL",
-            "ALTER TABLE sessions ADD COLUMN activity DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+            "ALTER TABLE sessions ADD COLUMN id INT(11) AUTO_INCREMENT PRIMARY KEY",
+            "ALTER TABLE sessions ADD COLUMN account_id INT(11)",
+            "ALTER TABLE sessions ADD COLUMN username VARCHAR(255)",
+            "ALTER TABLE sessions ADD COLUMN session VARCHAR(50)",
+            "ALTER TABLE sessions ADD COLUMN ip VARCHAR(50)",
+            "ALTER TABLE sessions ADD COLUMN version VARCHAR(50)",
+            "ALTER TABLE sessions ADD COLUMN activity DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+			      "ALTER TABLE sessions ADD FOREIGN KEY (account_id) REFERENCES accounts(id)"
           );
           for($i = 0; $i < count($queries); $i++) 
           {
@@ -58,11 +59,58 @@
         }
         else
         {
-          $query = "CREATE TABLE IF NOT EXISTS sessions(id int(11) AUTO_INCREMENT, account_id int(11), username varchar(255) NOT NULL, session varchar(50) NOT NULL, ip varchar(50) NOT NULL, version varchar(50) NOT NULL, activity DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (id))";
+          $query = "CREATE TABLE IF NOT EXISTS sessions(id INT(11) AUTO_INCREMENT, account_id INT(11), username VARCHAR(255) NOT NULL, session VARCHAR(50) NOT NULL, ip VARCHAR(50) NOT NULL, version VARCHAR(50) NOT NULL, activity DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (id), FOREIGN KEY (account_id) REFERENCES accounts(id))";
+          mysqli_query($connection, $query);
+        }
+		    $blacklist_table = mysqli_query($connection, "SELECT 1 from blacklist LIMIT 1");
+        if($blacklist_table)
+        {
+          $queries = array(
+            "ALTER TABLE blacklist ADD COLUMN id INT(11) AUTO_INCREMENT PRIMARY KEY",
+            "ALTER TABLE blacklist ADD COLUMN ip VARCHAR(50)",
+			      "ALTER TABLE blacklist ADD COLUMN reason INT(11) DEFAULT 0",
+            "ALTER TABLE blacklist ADD COLUMN blocktime DATETIME DEFAULT CURRENT_TIMESTAMP"
+          );
+          for($i = 0; $i < count($queries); $i++) 
+          {
+            mysqli_query($connection, $queries[$i]);
+          }
+        }
+        else
+        {
+          $query = "CREATE TABLE IF NOT EXISTS blacklist(id INT(11) AUTO_INCREMENT, ip VARCHAR(50) NOT NULL, reason INT(11) DEFAULT 0, blocktime DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id))";
+          mysqli_query($connection, $query);
+        }
+		    $messages_table = mysqli_query($connection, "SELECT 1 from messages LIMIT 1");
+        if($blacklist_table)
+        {
+          $queries = array(
+          "ALTER TABLE messages ADD COLUMN id int(11) AUTO_INCREMENT PRIMARY KEY",
+          "ALTER TABLE messages ADD COLUMN sender_id INT(11)",
+          "ALTER TABLE messages ADD COLUMN receiver_id INT(11)",
+          "ALTER TABLE messages ADD COLUMN receiver_type INT(11) DEFAULT 0",
+          "ALTER TABLE messages ADD COLUMN encryption_key VARCHAR(50)",
+          "ALTER TABLE messages ADD COLUMN message_text VARCHAR(10000)",
+          "ALTER TABLE messages ADD COLUMN delivered INT(1) DEFAULT 0",
+          "ALTER TABLE messages ADD COLUMN seen INT(1) DEFAULT 0",
+          "ALTER TABLE messages ADD COLUMN sender_delete INT(1) DEFAULT 0",
+          "ALTER TABLE messages ADD COLUMN receiver_delete INT(1) DEFAULT 0",
+          "ALTER TABLE messages ADD COLUMN send_time DATETIME DEFAULT CURRENT_TIMESTAMP",
+          "ALTER TABLE messages ADD COLUMN seen_time DATETIME DEFAULT CURRENT_TIMESTAMP",
+          "ALTER TABLE messages ADD FOREIGN KEY (sender_id) REFERENCES accounts(id)",
+          "ALTER TABLE messages ADD FOREIGN KEY (receiver_id) REFERENCES accounts(id)"
+          );
+          for($i = 0; $i < count($queries); $i++) 
+          {
+            mysqli_query($connection, $queries[$i]);
+          }
+        }
+        else
+        {
+          $query = "CREATE TABLE IF NOT EXISTS messages(id INT(11) AUTO_INCREMENT, sender_id INT(11), receiver_id INT(11), receiver_type INT(11) DEFAULT 0, encryption_key VARCHAR(50) NOT NULL, message_text VARCHAR(10000) NOT NULL, delivered INT(1) DEFAULT 0, seen INT(1) DEFAULT 0, sender_delete INT(1) DEFAULT 0, receiver_delete INT(1) DEFAULT 0, send_time DATETIME DEFAULT CURRENT_TIMESTAMP, seen_time DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), FOREIGN KEY (sender_id) REFERENCES accounts(id), FOREIGN KEY (receiver_id) REFERENCES accounts(id))";
           mysqli_query($connection, $query);
         }
         mysqli_close($connection);
-
         $path = get_base_path();
         if($path != null)
         {
@@ -172,14 +220,14 @@
     chmod($private_path . "config.php", 0600);
 
     $confog_data = "
-    <?php
-      define('DB_NAME', '".$database."');
-      define('DB_USER', '".$username."');
-      define('DB_PASSWORD', '".$password."');
-      define('DB_HOST', '".$host."');
-      define('AES_PASSWORD', '".$aes."');
-      define('MD5_PASSWORD', '".$md5."');
-      ?>";
+<?php
+	define('DB_NAME', '".$database."');
+	define('DB_USER', '".$username."');
+	define('DB_PASSWORD', '".$password."');
+	define('DB_HOST', '".$host."');
+	define('AES_PASSWORD', '".$aes."');
+	define('MD5_PASSWORD', '".$md5."');
+?>";
     file_put_contents($private_path . "config.php", $confog_data);
     
     if(file_exists($private_path . "control.php")) {unlink($private_path . "control.php");}
@@ -536,6 +584,10 @@
     {
 	    displayError("Project name can not be empty.");
     }
+	  else if (!isAlphanumeric(project)) 
+    {
+	    displayError("Project name should only contain letters, numbers, space and dash.");
+    }
     else if (isStringNullOrEmpty(aes)) 
     {
 	    displayError("AES key can not be empty.");
@@ -587,7 +639,7 @@
     var key = '';
     var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789&^()!_-';
     var charactersLength = characters.length;
-    for ( var i = 0; i < length; i++ ) 
+    for ( var i = 0; i < length; i++) 
     {
       key += characters.charAt(Math.floor(Math.random() * charactersLength));
     }
@@ -602,6 +654,11 @@
   function isStringNullOrEmpty(str) 
   {
     return (!str || str.length === 0 );
+  }
+  
+  function isAlphanumeric(str)
+  {
+	return str.match(/^[0-9A-Za-z\s\-\_]+$/);
   }
   
   function displayError(message)
