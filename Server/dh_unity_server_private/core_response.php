@@ -2,143 +2,98 @@
 
     function get_core_response($connection, $json, $path)
     {
+		
 		include_once ($path . "/control.php");
+		$ip = get_user_ip();
+		$response = array();
+		$response["successful"] = false;
+		$response["now_datetime"] = get_current_datetime($connection);
+		
+		if(is_in_blacklist($connection, $ip))
+		{
+			$response["error"] = "BLACKLIST";
+			return $response;
+		}
+		
 		switch($json->request)
 		{
-			case 987650: // Authenticate User
-				$ip = get_user_ip();
-				if(is_in_blacklist($connection, $ip))
+			case 987650: // Connect To Server
+				$response["sync_period"] = CONNECTION_CHECK_PERIOD;
+				$response["successful"] = true;
+				break;
+			case 987651: // Sync Connection
+				if(isset($json->extentions_requests))
 				{
-					return "BLACKLIST";
-				}
-				$query = "SELECT id, password, blocked FROM accounts WHERE username = '$json->username'";
-			    $result = mysqli_query($connection, $query);
-			    if($result && mysqli_num_rows($result) == 1)
-				{
-					$password = "";
-					$blocked = 1;
-					$account_id = 0;
-                    while($row = mysqli_fetch_assoc($result))
+					$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false);
+					if($auth["valid"] == true)
 					{
-						$password = $row['password'];
-						$blocked = $row['blocked'];
-						$account_id = $row['id'];
-					}
-                    if($password == $json->password)
-					{
-
-						// Check if the account has been suspended
-						if($blocked > 0)
+						$requests_response = array();
+						foreach($json->extentions_requests as $key => $value) 
 						{
-							return 'BLOCKED';
-						}
-
-						// Check if there is other devices are online using this account
-						$ip = get_user_ip();
-						if(ALLOW_MULTIPLE_ONLINE_SESSIONS == false)
-						{
-							$period = CONNECTION_CHECK_PERIOD + 5;
-							$query = "SELECT id FROM sessions WHERE account_id = $account_id AND ip <> '$ip' AND activity >= CURRENT_TIMESTAMP - INTERVAL $period SECOND";
-							$result = mysqli_query($connection, $query);
-							if($result && mysqli_num_rows($result) > 0)
+							switch($value)
 							{
-								return 'ANOTHER_SESSION_IS_ONLINE';
+								case 987702: // UPDATE_USER_ACTIVITY
+									$task = array();
+									$id = $auth["session_id"];
+									$query = "UPDATE sessions SET activity = CURRENT_TIMESTAMP WHERE id = $id";
+									mysqli_query($connection, $query);
+									// $task["successful"] = true;
+									$requests_response["987702"] = $task;
+									break;
+								case 987750: // GET_UNREAD_MESSAGES_COUNT
+									$task = array();
+									$task["unread_messages"] = get_unread_messages_count($connection, $auth["account_id"]);
+									// $task["successful"] = true;
+									$requests_response["987750"] = $task;
+									break;
+								case 987751: // GET_UNDELIVERED_MESSAGES
+										$undelivered_messages = get_undelivered_messages($connection, $auth["account_id"], MAX_MESSAGE_PER_PACKAGE, true);
+										if($undelivered_messages != null)
+										{	
+											$task = array();
+											$task["undelivered_messages"] = $undelivered_messages;
+											// $task["successful"] = true;
+											$requests_response["987751"] = $task;
+										}
+										break;
 							}
 						}
-
-						// If there is a session for this ip then use it otherwise create a new session
-						$query = "SELECT id FROM sessions WHERE account_id = $account_id AND ip = '$ip'";
-						$result = mysqli_query($connection, $query);
-						if($result && mysqli_num_rows($result) > 0)
+						if(count($requests_response) > 0)
 						{
-							// Use an existing session
-							$id = 0;
-							while($row = mysqli_fetch_assoc($result))
-							{
-								$id = $row['id'];
-							}
-							$query = "UPDATE sessions SET username = '$json->username', session = '$json->session', version = '$json->version' WHERE id = $id";
-							mysqli_query($connection, $query);
+							$response["requests_response"] = $requests_response;
 						}
-						else
-						{
-							// Create a new session
-							$query = "INSERT INTO sessions (account_id, username, session, ip, version) VALUES($account_id , '$json->username', '$json->session', '$ip', '$json->version')";
-							mysqli_query($connection, $query);
-						}
-						$response = array();
-						$response["message"] = 'SUCCESSFUL';
-						$response["sync_period"] = CONNECTION_CHECK_PERIOD;
-						$response["now"] = get_current_datetime($connection);
-                    	return $response;
+						$response["successful"] = true;
 					}
 					else
 					{
-						return 'WRONG_CREDENTIALS';
+						$response["error"] = $auth["error"];
 					}
-				}
-				else if($result && mysqli_num_rows($result) == 0)
-				{
-                    if($json->register)
-					{
-						// Check to see if maximum number of accounts for this ip is reached
-						$ip = get_user_ip();
-						$query = "SELECT COUNT(DISTINCT username) AS count FROM sessions WHERE ip = '$ip'";
-						$result = mysqli_query($connection, $query);
-						$count = 0;
-						if($result && mysqli_num_rows($result) > 0)
-						{
-							while($row = mysqli_fetch_assoc($result))
-							{
-								$count = $row['count'];
-							}
-						}
-						if($count > MAX_ACCOUNTS_PER_IP)
-						{
-							return 'ERROR_IP_MAX_USER_REACHED';
-						}
-						
-						// Check to see if maximum number of accounts in total is reached
-						$query = "SELECT COUNT(DISTINCT username) AS count FROM accounts";
-						$result = mysqli_query($connection, $query);
-						$count = 0;
-						if($result && mysqli_num_rows($result) > 0)
-						{
-							while($row = mysqli_fetch_assoc($result))
-							{
-								$count = $row['count'];
-							}
-						}
-						if($count > MAX_USERS)
-						{
-							return 'ERROR_MAX_USER_REACHED';
-						}
-
-						// Create a new account
-						$query = "INSERT INTO accounts(username, password, score) VALUES('$json->username','$json->password', 0)";
-						$result = mysqli_query($connection, $query);
-						$account_id = mysqli_insert_id($connection);
-						$query = "INSERT INTO sessions (account_id, username, session, ip, version) VALUES($account_id, '$json->username', '$json->session', '$ip', '$json->version')";
-						mysqli_query($connection, $query);
-						$auth = array();
-						$auth["message"] = 'SUCCESSFUL';
-						$auth["sync_period"] = CONNECTION_CHECK_PERIOD;
-                    	return $auth;
-					}
-				    else
-					{
-						return 'WRONG_CREDENTIALS';
-					}
-				}
-				else
-				{
-				    return 'FATAL_ERROR_MULTIPLE_USERNAME';
 				}
 				break;
-			case 987651: // Sync User Connection
-				$auth = authenticate($connection, $json->username, $json->password, $json->session);
+			case 987650:
+				
+				break;
+			case 987700: // AUTHENTICATE_USER
+				$create_session_if_not_exists = false;
+				$register = false;
+				if(isset($json->create_session))
+				{
+					$create_session_if_not_exists = $json->create_session;
+				}
+				if(isset($json->register_user))
+				{
+					$register = $json->register_user;
+				}
+				$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, $register, $json->version, $create_session_if_not_exists);
 				if($auth["valid"] == true)
 				{
+					$response["successful"] = true;
+					$response["account_id"] = $auth["account_id"];
+					$response["session_id"] = $auth["session_id"];
+
+
+
+					/*
 					$sync_data = array();
 					$sync_data["message"] = 'SUCCESSFUL';
 					$sync_data["unread_messages"] = get_unread_messages_count($connection, $auth["account_id"]);
@@ -148,64 +103,35 @@
 					{	
 						$sync_data["undelivered_messages"] = $undelivered_messages;
 					}
-					
-					
-					
-					
-					return $sync_data;
+					*/
 				}
 				else
 				{
-					return $auth["error"];
+					$response["error"] = $auth["error"];
 				}
 				break;
-			case 987652:
-
-				
-				
-				
-				
-				
-				break;
-			case 987653:
-				
-				break;
-			case 987654:
-				
-				break;
-			case 987655:
-				
-				break;
-			case 987656:
-				
-				break;
-			case 987657:
-				
-				break;
-			case 987658:
-				
-				break;
-			case 987659:
-				
-				break;
-			case 987660:
-				
-				break;
-			case 987661:
-				
-				break;
-			case 987662:
-				
-				break;
 		}
-		return 'NULL';
+		return $response;
     }
 	
-	function authenticate($connection, $username, $password, $session)
+	function process_sync_request($id, $connection, $json, $path)
 	{
+		include_once ($path . "/control.php");
+		
+	}
+	
+	function get_core_response_by_id($id, $connection, $json, $path)
+	{
+		include_once ($path . "/control.php");
+		
+	}
+	
+	function authenticate($connection, $path, $username, $password, $session, $register, $version, $create_session_if_not_exists)
+	{
+		include_once ($path . "/control.php");
 		$response = array();
 		$response["valid"] = false;
-		$response["error"] = "NULL";
+		$response["error"] = "";
 		$response["session_id"] = 0;
 		$response["account_id"] = 0;
 		$query = "SELECT id, password, blocked FROM accounts WHERE username = '$username'";
@@ -231,14 +157,51 @@
 				}
 				else
 				{
-					$ip = get_user_ip();
-					if(is_in_blacklist($connection, $ip))
+					if($create_session_if_not_exists)
 					{
-						$response["error"] = "BLACKLIST";
+						// Check if there is other devices are online using this account
+						$ip = get_user_ip();
+						if(ALLOW_MULTIPLE_ONLINE_SESSIONS == false)
+						{
+							$period = CONNECTION_CHECK_PERIOD + 5;
+							$query = "SELECT id FROM sessions WHERE account_id = $account_id AND ip <> '$ip' AND activity >= CURRENT_TIMESTAMP - INTERVAL $period SECOND";
+							$result = mysqli_query($connection, $query);
+							if($result && mysqli_num_rows($result) > 0)
+							{
+								$response["error"] = "ANOTHER_SESSION_IS_ONLINE";
+								return $response;
+							}
+						}
+						
+						// If there is a session for this ip then use it otherwise create a new session
+						$query = "SELECT id FROM sessions WHERE account_id = $account_id AND ip = '$ip'";
+						$result = mysqli_query($connection, $query);
+						if($result && mysqli_num_rows($result) > 0)
+						{
+							// Use an existing session
+							$session_id = 0;
+							while($row = mysqli_fetch_assoc($result))
+							{
+								$session_id = $row['id'];
+							}
+							$response["session_id"] = $session_id;
+							$query = "UPDATE sessions SET username = '$username', session = '$session', version = '$version' WHERE id = $session_id";
+							mysqli_query($connection, $query);
+						}
+						else
+						{
+							// Create a new session
+							$query = "INSERT INTO sessions (account_id, username, session, ip, version) VALUES($account_id , '$username', '$session', '$ip', '$version')";
+							mysqli_query($connection, $query);
+							$session_id = mysqli_insert_id($connection);
+							$response["session_id"] = $session_id;
+						}
+						$response["valid"] = true;
 					}
 					else
 					{
 						// Check if there is a session for this user
+						$ip = get_user_ip();
 						$query = "SELECT id FROM sessions WHERE account_id = $account_id AND ip = '$ip' AND session = '$session'";
 						$result = mysqli_query($connection, $query);
 						if($result && mysqli_num_rows($result) > 0)
@@ -265,9 +228,64 @@
 				$response["error"] = "WRONG_CREDENTIALS";
 			}
 		}
+		else if($result && mysqli_num_rows($result) == 0)
+		{
+			if($register)
+			{
+				// Check to see if maximum number of accounts for this ip is reached
+				$ip = get_user_ip();
+				$query = "SELECT COUNT(DISTINCT username) AS count FROM sessions WHERE ip = '$ip'";
+				$result = mysqli_query($connection, $query);
+				$count = 0;
+				if($result && mysqli_num_rows($result) > 0)
+				{
+					while($row = mysqli_fetch_assoc($result))
+					{
+						$count = $row['count'];
+					}
+				}
+				if($count > MAX_ACCOUNTS_PER_IP)
+				{
+					$response["error"] = 'ERROR_IP_MAX_USER_REACHED';
+					return $response;
+				}
+				
+				// Check to see if maximum number of accounts in total is reached
+				$query = "SELECT COUNT(DISTINCT username) AS count FROM accounts";
+				$result = mysqli_query($connection, $query);
+				$count = 0;
+				if($result && mysqli_num_rows($result) > 0)
+				{
+					while($row = mysqli_fetch_assoc($result))
+					{
+						$count = $row['count'];
+					}
+				}
+				if($count > MAX_USERS)
+				{
+					$response["error"] = 'ERROR_MAX_USER_REACHED';
+					return $response;
+				}
+
+				// Create a new account
+				$query = "INSERT INTO accounts(username, password) VALUES('$username','$password')";
+				$result = mysqli_query($connection, $query);
+				$account_id = mysqli_insert_id($connection);
+				$query = "INSERT INTO sessions (account_id, username, session, ip, version) VALUES($account_id, '$username', '$session', '$ip', '$version')";
+				mysqli_query($connection, $query);
+				$session_id = mysqli_insert_id($connection);
+				$response["session_id"] = $session_id;
+				$response["account_id"] = $account_id;
+				$response["valid"] = true;
+			}
+			else
+			{
+				$response["error"] = 'WRONG_CREDENTIALS';
+			}
+		}
 		else
 		{
-			$response["error"] = "WRONG_CREDENTIALS";
+			$response["error"] = "FATAL_ERROR_MULTIPLE_USERNAME";
 		}
         return $response;
 	}
@@ -331,5 +349,30 @@
 		}
 		return date("Y-m-d H:i:s", time());
 	}
-
+	
+	function get_user_ip()
+	{
+		if(isset($_SERVER["HTTP_CF_CONNECTING_IP"]))
+		{
+			$_SERVER['REMOTE_ADDR'] = $_SERVER["HTTP_CF_CONNECTING_IP"];
+			$_SERVER['HTTP_CLIENT_IP'] = $_SERVER["HTTP_CF_CONNECTING_IP"];
+		}
+		$client  = @$_SERVER['HTTP_CLIENT_IP'];
+		$forward = @$_SERVER['HTTP_X_FORWARDED_FOR'];
+		$remote  = $_SERVER['REMOTE_ADDR'];
+		if(filter_var($client, FILTER_VALIDATE_IP))
+		{
+			$ip = $client;
+		}
+		else if(filter_var($forward, FILTER_VALIDATE_IP))
+		{
+			$ip = $forward;
+		}
+		else
+		{
+			$ip = $remote;
+		}
+		return $ip;
+	}
+	
 ?>
