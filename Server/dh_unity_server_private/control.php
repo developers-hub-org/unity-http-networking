@@ -6,5 +6,6 @@
     define('MAX_USERS', 999999999);
     define('CONNECTION_CHECK_PERIOD', 5);
     define('MAX_ACCOUNTS_PER_IP', 10);
-	define('MAX_MESSAGE_PER_PACKAGE', 10);
+    define('MAX_MESSAGE_PER_PACKAGE', 10);
+    define('MAX_RETURN_ACCOUNTS_PER_PAGE', 100);
 ?>
