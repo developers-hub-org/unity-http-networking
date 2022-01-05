@@ -101,7 +101,7 @@
 				$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false);
 				if($auth["valid"] == true)
 				{
-					$user = get_ser_data($connection, $json->get_username);
+					$user = get_user_data($connection, $json->get_username);
 					if($user != null)
 					{
 						$response["successful"] = true;
@@ -153,7 +153,7 @@
 		
 	}
 	
-	function get_ser_data($connection, $username)
+	function get_user_data($connection, $username)
 	{
 		$query = "SELECT * FROM accounts WHERE username = '$username'";
 		$result = mysqli_query($connection, $query);
@@ -163,6 +163,7 @@
 			unset($response["password"]);
 			return $response;
 		}
+		// todo : is online
 		return null;
 	}
 	
@@ -174,19 +175,12 @@
 			$page = 1;
 		}
 		$sort_query = "";
-		if($sort != null && $sort != "")
+		if($desc_asc != 0 && $sort != null && $sort != "")
 		{
 			$result = mysqli_query($connection, "SHOW COLUMNS FROM accounts LIKE '$sort'");
 			if(mysqli_num_rows($result) > 0)
 			{
-				if($desc_asc != 0)
-				{
-					$sort_query = ($desc_asc > 0) ? " ORDER BY $sort ASC" : " ORDER BY $sort DESC";
-				}
-				else
-				{
-					$sort_query = " ORDER BY $sort";
-				}
+				$sort_query = ($desc_asc > 0) ? " ORDER BY $sort ASC" : " ORDER BY $sort DESC";
 			}
 		}
 		if($per_page <= 0)
@@ -197,49 +191,75 @@
 		{
 			$per_page = MAX_RETURN_ACCOUNTS_PER_PAGE;
 		}
-		$query = "SET @row_number = 0; SELECT (@row_number:=@row_number + 1) AS num, * FROM accounts";
-		// $query = "SELECT * FROM accounts" . $sort_query . " LIMIT " . ($page - 1) . ", " . $per_page;
-		// $result = mysqli_query($connection, $query);
-		$result = mysqli_multi_query($connection, $query);
-		$response = array();
-		do 
+		$columns = array();
+		$query = "show columns from accounts;";
+		$result = mysqli_query($connection, $query);
+		if($result && mysqli_num_rows($result) > 0)
 		{
-			// Store first result set
-			if ($result = mysqli_store_result($con)) 
-			{
-				while ($row = mysqli_fetch_row($result)) {
-				printf("%s\n", $row[0]);
-				}
-				mysqli_free_result($result);
-			}
-				// if there are more result-sets, the print a divider
-				if (mysqli_more_results($con)) {
-				printf("-------------\n");
-			}
-			//Prepare next result set
-		} 
-		while (mysqli_next_result($con));
-		
-		
-		// if $response  lenghht > 0 return
-		
-		if($result && mysqli_more_results($connection)
-		{
-			
-			
-			
-			
-			
-			
-			
-			/*
-			$response = array();
 			while($row = mysqli_fetch_assoc($result))
 			{
-				unset($row["password"]);
-				array_push($response, $row);
+				if($row["Field"] != "password")
+				{
+					array_push($columns, $row["Field"]);
+				}
 			}
-			return $response;*/
+		}
+		$column_query = "";
+		if(count($columns) > 0)
+		{
+			$column_query = implode(", ", $columns);
+			$column_query = ", " . $column_query;
+		}
+		$query = "SET @row_number = 0; SELECT * FROM (SELECT (@row_number:=@row_number + 1) AS rank " . $column_query . " FROM accounts" . $sort_query . ") as users LIMIT " . (($page - 1) * $per_page) . ", " . $per_page;
+		if (mysqli_multi_query($connection, $query)) 
+		{
+			$response = array();
+			$id_list = array();
+			while(true)
+			{
+				if ($result = mysqli_store_result($connection))
+				{
+					while ($row = mysqli_fetch_assoc($result)) 
+					{
+						$id_list[] = $row['id'];
+						unset($row["password"]);
+						array_push($response, $row);
+					}
+					mysqli_free_result($result);
+				}
+				if (mysqli_more_results($connection))
+				{
+					mysqli_next_result($connection);
+				} 
+				else
+				{
+					break;
+				}
+			}
+			if(count($response) > 0)
+			{
+				$period = CONNECTION_CHECK_PERIOD + 5;
+				$query = "SELECT account_id FROM sessions WHERE account_id IN (" . implode(',', $id_list) . ") AND activity >= CURRENT_TIMESTAMP - INTERVAL " . $period . " SECOND ORDER BY account_id ASC"; // temp - remove if not reached result
+				$result = mysqli_query($connection, $query);
+				if($result && mysqli_num_rows($result) > 0)
+				{				
+					usort($response, 'compare_array_id');
+					$j = 0;
+					while($row = mysqli_fetch_assoc($result))
+					{	
+						for ($i = $j; $i < count($response); $i++)
+						{
+							if ($response[$i]['id'] === $row["account_id"]) 
+							{
+								$response[$i]["is_online"] = 1;
+								$j = $i + 1;
+								break;
+							}
+						}
+					}
+				}
+				return $response;
+			}
 		}
 		return null;
 	}
@@ -408,6 +428,11 @@
         return $response;
 	}
 	
+	function compare_array_id($array1, $array2)
+	{
+		return strnatcmp($array1['id'], $array2['id']);
+	}
+
 	function get_unread_messages_count($connection, $account_id)
 	{
 		$count = 0;
