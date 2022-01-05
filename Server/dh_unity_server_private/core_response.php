@@ -30,15 +30,16 @@
 						$requests_response = array();
 						foreach($json->extentions_requests as $key => $value) 
 						{
+							// Return type ($task) must be an array
 							switch($value)
 							{
-								case 987702: // UPDATE_USER_ACTIVITY
+								case 987701: // UPDATE_USER_ACTIVITY
 									$task = array();
 									$id = $auth["session_id"];
 									$query = "UPDATE sessions SET activity = CURRENT_TIMESTAMP WHERE id = $id";
 									mysqli_query($connection, $query);
 									// $task["successful"] = true;
-									$requests_response["987702"] = $task;
+									$requests_response["987701"] = $task;
 									break;
 								case 987750: // GET_UNREAD_MESSAGES_COUNT
 									$task = array();
@@ -90,20 +91,46 @@
 					$response["successful"] = true;
 					$response["account_id"] = $auth["account_id"];
 					$response["session_id"] = $auth["session_id"];
-
-
-
-					/*
-					$sync_data = array();
-					$sync_data["message"] = 'SUCCESSFUL';
-					$sync_data["unread_messages"] = get_unread_messages_count($connection, $auth["account_id"]);
-					$sync_data["now"] = get_current_datetime($connection);
-					$undelivered_messages = get_undelivered_messages($connection, $auth["account_id"], MAX_MESSAGE_PER_PACKAGE, true);
-					if($undelivered_messages != null)
-					{	
-						$sync_data["undelivered_messages"] = $undelivered_messages;
+				}
+				else
+				{
+					$response["error"] = $auth["error"];
+				}
+				break;
+			case 987702: // GET_USER_DATA
+				$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false);
+				if($auth["valid"] == true)
+				{
+					$user = get_ser_data($connection, $json->get_username);
+					if($user != null)
+					{
+						$response["successful"] = true;
+						$response["user"] = $user;
 					}
-					*/
+					else
+					{
+						$response["error"] = "USER_NOT_EXISTS";
+					}
+				}
+				else
+				{
+					$response["error"] = $auth["error"];
+				}
+				break;
+			case 987703: // GET_USERS_DATA_PER_PAGE
+				$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false);
+				if($auth["valid"] == true)
+				{
+					$users = get_ser_data_per_page($connection, $path, $json->users_page, $json->users_per_page, $json->users_sort, $json->users_desc_asc);
+					if($users != null)
+					{
+						$response["users"] = $users;
+					}
+					else
+					{
+						$response["error"] = "NO_USER";
+					}
+					$response["successful"] = true;
 				}
 				else
 				{
@@ -124,6 +151,97 @@
 	{
 		include_once ($path . "/control.php");
 		
+	}
+	
+	function get_ser_data($connection, $username)
+	{
+		$query = "SELECT * FROM accounts WHERE username = '$username'";
+		$result = mysqli_query($connection, $query);
+		if($result && mysqli_num_rows($result) == 1)
+		{
+			$response = mysqli_fetch_assoc($result);
+			unset($response["password"]);
+			return $response;
+		}
+		return null;
+	}
+	
+	function get_ser_data_per_page($connection, $path, $page, $per_page, $sort, $desc_asc)
+	{
+		include_once ($path . "/control.php");
+		if($page <= 0)
+		{
+			$page = 1;
+		}
+		$sort_query = "";
+		if($sort != null && $sort != "")
+		{
+			$result = mysqli_query($connection, "SHOW COLUMNS FROM accounts LIKE '$sort'");
+			if(mysqli_num_rows($result) > 0)
+			{
+				if($desc_asc != 0)
+				{
+					$sort_query = ($desc_asc > 0) ? " ORDER BY $sort ASC" : " ORDER BY $sort DESC";
+				}
+				else
+				{
+					$sort_query = " ORDER BY $sort";
+				}
+			}
+		}
+		if($per_page <= 0)
+		{
+			$per_page = 10;
+		}
+		if($per_page > MAX_RETURN_ACCOUNTS_PER_PAGE)
+		{
+			$per_page = MAX_RETURN_ACCOUNTS_PER_PAGE;
+		}
+		$query = "SET @row_number = 0; SELECT (@row_number:=@row_number + 1) AS num, * FROM accounts";
+		// $query = "SELECT * FROM accounts" . $sort_query . " LIMIT " . ($page - 1) . ", " . $per_page;
+		// $result = mysqli_query($connection, $query);
+		$result = mysqli_multi_query($connection, $query);
+		$response = array();
+		do 
+		{
+			// Store first result set
+			if ($result = mysqli_store_result($con)) 
+			{
+				while ($row = mysqli_fetch_row($result)) {
+				printf("%s\n", $row[0]);
+				}
+				mysqli_free_result($result);
+			}
+				// if there are more result-sets, the print a divider
+				if (mysqli_more_results($con)) {
+				printf("-------------\n");
+			}
+			//Prepare next result set
+		} 
+		while (mysqli_next_result($con));
+		
+		
+		// if $response  lenghht > 0 return
+		
+		if($result && mysqli_more_results($connection)
+		{
+			
+			
+			
+			
+			
+			
+			
+			/*
+			$response = array();
+			while($row = mysqli_fetch_assoc($result))
+			{
+				unset($row["password"]);
+				array_push($response, $row);
+			}
+			return $response;*/
+		}
+		return null;
 	}
 	
 	function authenticate($connection, $path, $username, $password, $session, $register, $version, $create_session_if_not_exists)
