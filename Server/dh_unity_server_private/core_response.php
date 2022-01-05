@@ -101,7 +101,7 @@
 				$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false);
 				if($auth["valid"] == true)
 				{
-					$user = get_user_data($connection, $json->get_username);
+					$user = get_user_data($connection, $path, $json->get_username);
 					if($user != null)
 					{
 						$response["successful"] = true;
@@ -153,7 +153,7 @@
 		
 	}
 	
-	function get_user_data($connection, $username)
+	function get_user_data($connection, $path, $username)
 	{
 		$query = "SELECT * FROM accounts WHERE username = '$username'";
 		$result = mysqli_query($connection, $query);
@@ -161,9 +161,16 @@
 		{
 			$response = mysqli_fetch_assoc($result);
 			unset($response["password"]);
+			include_once ($path . "/control.php");
+			$period = CONNECTION_CHECK_PERIOD + 5;
+			$query = "SELECT * FROM sessions WHERE account_id = " . $response["id"] . " AND activity >= CURRENT_TIMESTAMP - INTERVAL " . $period . " SECOND";
+			$result = mysqli_query($connection, $query);
+			if($result && mysqli_num_rows($result) > 0)
+			{
+				$response["is_online"] = 1;
+			}
 			return $response;
 		}
-		// todo : is online
 		return null;
 	}
 	
