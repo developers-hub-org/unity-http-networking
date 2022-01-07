@@ -184,13 +184,14 @@
 				
 				break;
 			case 987706: // SEND_EMAIL_VERIFICATION_CODE
+				include_once ($path . "/authentication.php");
 				if(isset($json->username))
 				{
-					$email = send_email_verification_code($json->username, null, $path);
+					$email = send_email_verification_code($connection, $json->username, null, $path);
 				}
 				else if(isset($json->id))
 				{
-					$email = send_email_verification_code(null, $json->id, $path);
+					$email = send_email_verification_code($connection, null, $json->id, $path);
 				}
 				else
 				{
@@ -199,15 +200,15 @@
 				if($email != null)
 				{
 					$response["successful"] = $email["successful"];
-					if(isset($email["error"])
+					if(isset($email["error"]))
 					{
 						$response["error"] = $email["error"];
 					}
-					if(isset($email["id"])
+					if(isset($email["id"]))
 					{
 						$response["id"] = $email["id"];
 					}
-					if(isset($email["remained"])
+					if(isset($email["remained"]))
 					{
 						$response["remained"] = $email["remained"];
 					}
