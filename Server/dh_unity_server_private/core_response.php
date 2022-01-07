@@ -203,6 +203,10 @@
 					{
 						$response["error"] = $email["error"];
 					}
+					if(isset($email["id"])
+					{
+						$response["id"] = $email["id"];
+					}
 					if(isset($email["remained"])
 					{
 						$response["remained"] = $email["remained"];
