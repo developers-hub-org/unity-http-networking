@@ -1,6 +1,6 @@
 <?php
-    define('SERVER_VERSION', '1.0');
-    define('FORCE_CLIENT_UPDATE_TO_SERVER_VERSION', false);
+    define('CLIENT_VERSION', '1.0');
+    define('FORCE_CLIENTS_TO_UPDATE', false);
     define('ALLOW_MULTIPLE_ONLINE_SESSIONS', false);
     define('UNDER_MAINTENANCE', false);
     define('MAX_USERS', 999999999);
