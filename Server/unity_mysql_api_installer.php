@@ -190,6 +190,29 @@
           $query = "CREATE TABLE IF NOT EXISTS chat_group_members(id INT(11) AUTO_INCREMENT, is_active TINYINT(1) DEFAULT 1, role INT(11) DEFAULT 0, username VARCHAR(255), group_id INT(11), member_id INT(11), can_send_message INT(1) DEFAULT 1, joined_time DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), FOREIGN KEY (member_id) REFERENCES accounts(id), FOREIGN KEY (group_id) REFERENCES chat_groups(id))";
           mysqli_query($connection, $query);
         }
+        $verification_codes_table = mysqli_query($connection, "SELECT 1 from verification_codes LIMIT 1");
+        if($verification_codes_table)
+        {
+              $queries = array(
+              "ALTER TABLE verification_codes ADD COLUMN id int(11) AUTO_INCREMENT PRIMARY KEY",
+              "ALTER TABLE verification_codes ADD COLUMN is_used TINYINT(1) DEFAULT 0",
+              "ALTER TABLE verification_codes ADD COLUMN code VARCHAR(255)",
+              "ALTER TABLE verification_codes ADD COLUMN type INT(11) DEFAULT 0",
+              "ALTER TABLE verification_codes ADD COLUMN account_id INT(11)",
+              "ALTER TABLE verification_codes ADD COLUMN create_time DATETIME DEFAULT CURRENT_TIMESTAMP",
+              "ALTER TABLE verification_codes ADD COLUMN expire_time DATETIME DEFAULT CURRENT_TIMESTAMP",
+              "ALTER TABLE verification_codes ADD FOREIGN KEY (account_id) REFERENCES accounts(id)"
+              );
+              for($i = 0; $i < count($queries); $i++) 
+              {
+                mysqli_query($connection, $queries[$i]);
+              }
+            }
+            else
+            {
+              $query = "CREATE TABLE IF NOT EXISTS verification_codes(id INT(11) AUTO_INCREMENT, is_used TINYINT(1) DEFAULT 0, code VARCHAR(255), type INT(11) DEFAULT 0, account_id INT(11), create_time DATETIME DEFAULT CURRENT_TIMESTAMP, expire_time DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), FOREIGN KEY (account_id) REFERENCES accounts(id))";
+              mysqli_query($connection, $query);
+            }
         mysqli_close($connection);
         $path = get_base_path();
         if($path != null)
@@ -199,7 +222,7 @@
           $public_path = $path['public_path'] . "unity_projects" . DIRECTORY_SEPARATOR . $project_name . DIRECTORY_SEPARATOR;
           if (!file_exists($private_path)) 
           {
-            mkdir($private_path, 0777, true);
+            mkdir($private_path, 0777, true); // TODO : This could fail
           }
           if (!file_exists($public_path)) 
           {
@@ -273,6 +296,16 @@
 
   function download_repository($public_path, $private_path, $project_name_original, $project_name, $database, $username, $password, $aes, $md5, $host)
   {
+    if (!file_exists($private_path . "templates")) 
+    {
+      mkdir($private_path . "templates", 0777, true);
+    }
+
+    if(file_exists($private_path . "templates/" . "email_verification_code_template.html")) {unlink($private_path . "templates/" . "email_verification_code_template.html");}
+    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/templates/email_verification_code_template.html", $private_path);
+    if(!$downloaded){return false;}
+    chmod($private_path . "templates/" . "email_verification_code_template.html", 0600);
+
     if(file_exists($public_path . "api.php")) {unlink($public_path . "api.php");}
     $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_public/api.php", $public_path);
     if(!$downloaded){return false;}
