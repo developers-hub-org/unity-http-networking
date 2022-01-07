@@ -301,11 +301,6 @@
       mkdir($private_path . "templates", 0777, true);
     }
 
-    if(file_exists($private_path . "templates/" . "email_verification_code_template.html")) {unlink($private_path . "templates/" . "email_verification_code_template.html");}
-    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/templates/email_verification_code_template.html", $private_path);
-    if(!$downloaded){return false;}
-    chmod($private_path . "templates/" . "email_verification_code_template.html", 0600);
-
     if(file_exists($public_path . "api.php")) {unlink($public_path . "api.php");}
     $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_public/api.php", $public_path);
     if(!$downloaded){return false;}
@@ -319,6 +314,11 @@
       $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/dh_unity_server_core.php", $private_path);
       if(!$downloaded){return false;}
     }
+
+    if(file_exists($private_path . "templates/" . "email_verification_code_template.html")) {unlink($private_path . "templates/" . "email_verification_code_template.html");}
+    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/templates/email_verifIcation_code_template.html", $private_path . "templates/");
+    if(!$downloaded){return false;}
+    chmod($private_path . "templates/" . "email_verification_code_template.html", 0600);
 
     if(file_exists($public_path . "files.ini")) {unlink($public_path . "files.ini");}
     $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_public/files.ini", $public_path);
