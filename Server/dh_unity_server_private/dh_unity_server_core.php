@@ -31,7 +31,7 @@
 						{
 							$result["error"] = 'UNDER_MAINTENANCE';
 						}
-						else if(FORCE_CLIENT_UPDATE_TO_SERVER_VERSION == true && $json->version != SERVER_VERSION)
+						else if(FORCE_CLIENTS_TO_UPDATE == true && $json->version != CLIENT_VERSION)
 						{	
 							$result["error"] = 'UPDATE_REQUIRED';
 						}
