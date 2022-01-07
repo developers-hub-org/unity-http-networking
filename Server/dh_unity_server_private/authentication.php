@@ -244,6 +244,7 @@
 				$id = $row["id"];
 				$email = $row["email"];
 			}
+			$result["id"] = "id";
 			if($is_verified)
 			{
 				$result["error"] = "ALREADY_VERIFIED";
