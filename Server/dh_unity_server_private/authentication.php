@@ -271,18 +271,18 @@
 					$company_email = COMPANY_EMAIL;
 					$logo = COMPANY_LOGO;
 					$time = EMAIL_VERIFICATION_CODE_EXPIRE_TIME;
-					$html =  htmlspecialchars(file_get_contents($path . "/templates/email_verifIcation_code_template.html"));
+					$html =  file_get_contents($path . "/templates/email_verifIcation_code_template.html");
 
 					$html = str_replace("[company_logo_url]", $logo, $html);
-					$html = str_replace("[company_name]", $logo, $html);
+					$html = str_replace("[company_name]", $company, $html);
 					$html = str_replace("[user_email_address]", $email, $html);
 					$html = str_replace("[verification_code]", $code, $html);
 					$html = str_replace("[remained_minutes]", ceil($time / 60), $html);
 					$html = str_replace("[copyright_footer]", date("Y") . " " . $company, $html);
-					
+
 					if(send_email($company_email, $company, $email, "Email Verification Code", $html))
 					{
-						$query = "UPDATE id, email, is_email_verified FROM verification_codes (code, type, account_id, expire_time) VALUES('$code', 1, $id, CURRENT_TIMESTAMP - INTERVAL $time SECOND)";
+						$query = "INSERT INTO verification_codes (code, type, account_id, expire_time) VALUES('$code', 1, $id, CURRENT_TIMESTAMP + INTERVAL $time SECOND)";
 						mysqli_query($connection, $query);
 						$response["successful"] = true;
 						$response["remained"] = $time;
