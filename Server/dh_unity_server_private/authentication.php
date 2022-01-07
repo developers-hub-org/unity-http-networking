@@ -211,11 +211,11 @@
 		return null;
 	}
 	
-	function send_email_verification_code($username, $id, $path)
+	function send_email_verification_code($connection, $username, $id, $path)
 	{
-		$result = array();
-		$result["successful"] = false;
-		$result["error"] = "USER_NOT_EXIST";
+		$response = array();
+		$response["successful"] = false;
+		$response["error"] = "USER_NOT_EXIST";
 		$query = "";
 		if($username != null)
 		{
@@ -227,7 +227,7 @@
 		}
 		else
 		{
-			return $result;
+			return $response;
 		}
 		$result = mysqli_query($connection, $query);
 		if($result && mysqli_num_rows($result) == 1)
@@ -244,11 +244,11 @@
 				$id = $row["id"];
 				$email = $row["email"];
 			}
-			$result["id"] = "id";
+			$response["id"] = $id;
 			if($is_verified)
 			{
-				$result["error"] = "ALREADY_VERIFIED";
-				return;
+				$response["error"] = "ALREADY_VERIFIED";
+				return $response;
 			}
 			if(is_email_valid($email))
 			{
@@ -259,9 +259,9 @@
 				{
 					while($row = mysqli_fetch_assoc($result))
 					{
-						$result["error"] = "ALREADY_SENT";
-						$result["remained"] = $row["remained"];
-						return;
+						$response["error"] = "ALREADY_SENT";
+						$response["remained"] = $row["remained"];
+						return $response;
 					}
 				}
 				if(file_exists($path . "/templates/email_verifIcation_code_template.html"))
@@ -271,24 +271,38 @@
 					$company_email = COMPANY_EMAIL;
 					$logo = COMPANY_LOGO;
 					$time = EMAIL_VERIFICATION_CODE_EXPIRE_TIME;
-					$html = file_get_contents("email_template.html");
-					$html = sprintf($html, $logo, $company, $email, $code, ceil($time / 60), date("Y") . " " . $company);
-					$query = "UPDATE id, email, is_email_verified FROM verification_codes (code, type, account_id, expire_time) VALUES('$code', 1, $id, CURRENT_TIMESTAMP - INTERVAL $time SECOND)";
-					mysqli_query($connection, $query);
-					send_email($company_email, $company, $email, "Email Verification Code", $html);
-					$result["successful"] = true;
-					$result["remained"] = $time;
+					$html =  htmlspecialchars(file_get_contents($path . "/templates/email_verifIcation_code_template.html"));
+
+					$html = str_replace("[company_logo_url]", $logo, $html);
+					$html = str_replace("[company_name]", $logo, $html);
+					$html = str_replace("[user_email_address]", $email, $html);
+					$html = str_replace("[verification_code]", $code, $html);
+					$html = str_replace("[remained_minutes]", ceil($time / 60), $html);
+					$html = str_replace("[copyright_footer]", date("Y") . " " . $company, $html);
+					
+					if(send_email($company_email, $company, $email, "Email Verification Code", $html))
+					{
+						$query = "UPDATE id, email, is_email_verified FROM verification_codes (code, type, account_id, expire_time) VALUES('$code', 1, $id, CURRENT_TIMESTAMP - INTERVAL $time SECOND)";
+						mysqli_query($connection, $query);
+						$response["successful"] = true;
+						$response["remained"] = $time;
+					}
+					else
+					{
+						$response["error"] = "ERROR_SEND_EMAIL";
+					}
 				}
 				else
 				{
-					$result["error"] = "NO_TEMPLATE";
+					$response["error"] = "NO_TEMPLATE";
 				}
 			}
 			else
 			{
-				$result["error"] = "VALID_EMAIL_NOT_SET";
+				$response["error"] = "VALID_EMAIL_NOT_SET";
 			}
 		}
+		return $response;
 	}
 
 	function change_password($username, $old_password, $new_password)
