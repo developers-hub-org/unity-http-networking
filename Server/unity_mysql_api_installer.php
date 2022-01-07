@@ -26,6 +26,9 @@
             "ALTER TABLE accounts ADD COLUMN id INT(11) AUTO_INCREMENT PRIMARY KEY",
             "ALTER TABLE accounts ADD COLUMN username VARCHAR(255)",
             "ALTER TABLE accounts ADD COLUMN password VARCHAR(255)",
+			"ALTER TABLE accounts ADD COLUMN email VARCHAR(255) DEFAULT ''",
+			"ALTER TABLE accounts ADD COLUMN phone_number VARCHAR(255) DEFAULT ''",
+			"ALTER TABLE accounts ADD COLUMN picture_url VARCHAR(1000) DEFAULT ''",
             "ALTER TABLE accounts ADD COLUMN score INT(11) DEFAULT 0",
             "ALTER TABLE accounts ADD COLUMN blocked INT(11) DEFAULT 0"
           );
@@ -36,7 +39,7 @@
         }
         else
         {
-          $query = "CREATE TABLE IF NOT EXISTS accounts(id INT(11) AUTO_INCREMENT, username VARCHAR(255) NOT NULL, password VARCHAR(255) NOT NULL, score INT(11) DEFAULT 0, blocked INT(11) DEFAULT 0, PRIMARY KEY (id))";
+          $query = "CREATE TABLE IF NOT EXISTS accounts(id INT(11) AUTO_INCREMENT, username VARCHAR(255), password VARCHAR(255), email VARCHAR(255) DEFAULT '', phone_number VARCHAR(255) DEFAULT '', picture_url VARCHAR(1000) DEFAULT '', score INT(11) DEFAULT 0, blocked INT(11) DEFAULT 0, PRIMARY KEY (id))";
           mysqli_query($connection, $query);
         }
         $sessions_table = mysqli_query($connection, "SELECT 1 from sessions LIMIT 1");
@@ -50,7 +53,7 @@
             "ALTER TABLE sessions ADD COLUMN ip VARCHAR(50)",
             "ALTER TABLE sessions ADD COLUMN version VARCHAR(50)",
             "ALTER TABLE sessions ADD COLUMN activity DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
-			      "ALTER TABLE sessions ADD FOREIGN KEY (account_id) REFERENCES accounts(id)"
+			"ALTER TABLE sessions ADD FOREIGN KEY (account_id) REFERENCES accounts(id)"
           );
           for($i = 0; $i < count($queries); $i++) 
           {
@@ -81,8 +84,8 @@
           $query = "CREATE TABLE IF NOT EXISTS blacklist(id INT(11) AUTO_INCREMENT, ip VARCHAR(50) NOT NULL, reason INT(11) DEFAULT 0, blocktime DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id))";
           mysqli_query($connection, $query);
         }
-		    $messages_table = mysqli_query($connection, "SELECT 1 from messages LIMIT 1");
-        if($blacklist_table)
+		$messages_table = mysqli_query($connection, "SELECT 1 from messages LIMIT 1");
+        if($messages_table)
         {
           $queries = array(
           "ALTER TABLE messages ADD COLUMN id int(11) AUTO_INCREMENT PRIMARY KEY",
@@ -110,6 +113,79 @@
           $query = "CREATE TABLE IF NOT EXISTS messages(id INT(11) AUTO_INCREMENT, sender_id INT(11), receiver_id INT(11), receiver_type INT(11) DEFAULT 0, encryption_key VARCHAR(50) NOT NULL, message_text VARCHAR(10000) NOT NULL, delivered INT(1) DEFAULT 0, seen INT(1) DEFAULT 0, sender_delete INT(1) DEFAULT 0, receiver_delete INT(1) DEFAULT 0, send_time DATETIME DEFAULT CURRENT_TIMESTAMP, seen_time DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), FOREIGN KEY (sender_id) REFERENCES accounts(id), FOREIGN KEY (receiver_id) REFERENCES accounts(id))";
           mysqli_query($connection, $query);
         }
+		$users_blacklist_table = mysqli_query($connection, "SELECT 1 from users_blacklist LIMIT 1");
+		if($users_blacklist_table)
+		{
+          $queries = array(
+          "ALTER TABLE users_blacklist ADD COLUMN id int(11) AUTO_INCREMENT PRIMARY KEY",
+		  "ALTER TABLE users_blacklist ADD COLUMN is_active INT(11) DEFAULT 1",
+          "ALTER TABLE users_blacklist ADD COLUMN blocker_id INT(11)",
+          "ALTER TABLE users_blacklist ADD COLUMN blocked_id INT(11)",
+          "ALTER TABLE users_blacklist ADD COLUMN block_type INT(11) DEFAULT 0",
+          "ALTER TABLE users_blacklist ADD COLUMN block_time DATETIME DEFAULT CURRENT_TIMESTAMP",
+          "ALTER TABLE users_blacklist ADD FOREIGN KEY (blocker_id) REFERENCES accounts(id)",
+          "ALTER TABLE users_blacklist ADD FOREIGN KEY (blocked_id) REFERENCES accounts(id)"
+          );
+          for($i = 0; $i < count($queries); $i++) 
+          {
+            mysqli_query($connection, $queries[$i]);
+          }
+        }
+        else
+        {
+          $query = "CREATE TABLE IF NOT EXISTS users_blacklist(id INT(11) AUTO_INCREMENT, is_active INT(1) DEFAULT 1, blocker_id INT(11), blocked_id INT(11), block_type INT(11) DEFAULT 0, block_time DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), FOREIGN KEY (blocker_id) REFERENCES accounts(id), FOREIGN KEY (blocked_id) REFERENCES accounts(id))";
+          mysqli_query($connection, $query);
+        }
+		$chat_groups_table = mysqli_query($connection, "SELECT 1 from chat_groups LIMIT 1");
+		if($chat_groups_table)
+		{
+          $queries = array(
+          "ALTER TABLE chat_groups ADD COLUMN id int(11) AUTO_INCREMENT PRIMARY KEY",
+		  "ALTER TABLE chat_groups ADD COLUMN is_active INT(1) DEFAULT 1",
+		  "ALTER TABLE chat_groups ADD COLUMN username VARCHAR(255) DEFAULT ''",
+		  "ALTER TABLE chat_groups ADD COLUMN picture_url VARCHAR(1000) DEFAULT ''",
+		  "ALTER TABLE chat_groups ADD COLUMN display_name VARCHAR(255)",
+		  "ALTER TABLE chat_groups ADD COLUMN description VARCHAR(1000) DEFAULT ''",
+          "ALTER TABLE chat_groups ADD COLUMN creator_id INT(11)",
+		  "ALTER TABLE chat_groups ADD COLUMN blocked INT(1) DEFAULT 0",
+          "ALTER TABLE chat_groups ADD COLUMN block_type INT(11) DEFAULT 0",
+          "ALTER TABLE chat_groups ADD COLUMN created_time DATETIME DEFAULT CURRENT_TIMESTAMP",
+          "ALTER TABLE chat_groups ADD FOREIGN KEY (creator_id) REFERENCES accounts(id)"
+          );
+          for($i = 0; $i < count($queries); $i++) 
+          {
+            mysqli_query($connection, $queries[$i]);
+          }
+        }
+        else
+        {
+          $query = "CREATE TABLE IF NOT EXISTS chat_groups(id INT(11) AUTO_INCREMENT, is_active INT(1) DEFAULT 1, username VARCHAR(255) DEFAULT '', picture_url VARCHAR(1000) DEFAULT '', display_name VARCHAR(255), description VARCHAR(1000) DEFAULT '', creator_id INT(11), blocked INT(1) DEFAULT 0, block_type INT(11) DEFAULT 0, created_time DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), FOREIGN KEY (creator_id) REFERENCES accounts(id))";
+          mysqli_query($connection, $query);
+        }
+		$chat_group_members_table = mysqli_query($connection, "SELECT 1 from chat_group_members LIMIT 1");
+		if($chat_group_members_table)
+		{
+          $queries = array(
+          "ALTER TABLE chat_group_members ADD COLUMN id int(11) AUTO_INCREMENT PRIMARY KEY",
+		  "ALTER TABLE chat_group_members ADD COLUMN is_active INT(1) DEFAULT 1",
+		  "ALTER TABLE chat_group_members ADD COLUMN role INT(11) DEFAULT 0",
+		  "ALTER TABLE chat_group_members ADD COLUMN group_id INT(11)",
+          "ALTER TABLE chat_group_members ADD COLUMN member_id INT(11)",
+		  "ALTER TABLE chat_group_members ADD COLUMN can_send_message INT(1) DEFAULT 1",
+          "ALTER TABLE chat_group_members ADD COLUMN joined_time DATETIME DEFAULT CURRENT_TIMESTAMP",
+          "ALTER TABLE chat_group_members ADD FOREIGN KEY (group_id) REFERENCES chat_groups(id)",
+		  "ALTER TABLE chat_group_members ADD FOREIGN KEY (member_id) REFERENCES accounts(id)"
+          );
+          for($i = 0; $i < count($queries); $i++) 
+          {
+            mysqli_query($connection, $queries[$i]);
+          }
+        }
+        else
+        {
+          $query = "CREATE TABLE IF NOT EXISTS chat_group_members(id INT(11) AUTO_INCREMENT, is_active INT(1) DEFAULT 1, role INT(11) DEFAULT 0, username VARCHAR(255), group_id INT(11), member_id INT(11), can_send_message INT(1) DEFAULT 1, joined_time DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), FOREIGN KEY (member_id) REFERENCES accounts(id), FOREIGN KEY (group_id) REFERENCES chat_groups(id))";
+          mysqli_query($connection, $query);
+        }
         mysqli_close($connection);
         $path = get_base_path();
         if($path != null)
@@ -125,7 +201,7 @@
           {
             mkdir($public_path, 0777, true);
           }
-          if(download_repository($public_path, $private_path, $project_name, $database, $username, $password, $aes, $md5, $host))
+          if(download_repository($public_path, $private_path, $project, $project_name, $database, $username, $password, $aes, $md5, $host))
           {
             $api_link = get_base_url();
             if(substr($api_link, -1) != "/")
@@ -186,7 +262,7 @@
 	  exit();
   }
   
-  function download_repository($public_path, $private_path, $project_name, $database, $username, $password, $aes, $md5, $host)
+  function download_repository($public_path, $private_path, $project_name_original, $project_name, $database, $username, $password, $aes, $md5, $host)
   {
     if(file_exists($public_path . "api.php")) {unlink($public_path . "api.php");}
     $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_public/api.php", $public_path);
@@ -214,6 +290,16 @@
     chmod($private_path . $core_file_name, 0600);
     chmod($public_path . "files.ini", 0600);
 
+    if(file_exists($private_path . "messaging.php")) {unlink($private_path . "messaging.php");}
+    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/messaging.php", $private_path);
+    if(!$downloaded){return false;}
+    chmod($private_path . "messaging.php", 0600);
+
+    if(file_exists($private_path . "authentication.php")) {unlink($private_path . "authentication.php");}
+    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/authentication.php", $private_path);
+    if(!$downloaded){return false;}
+    chmod($private_path . "authentication.php", 0600);
+
     if(file_exists($private_path . "config.php")) {unlink($private_path . "config.php");}
     $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/config.php", $private_path);
     if(!$downloaded){return false;}
@@ -221,6 +307,8 @@
 
     $confog_data = "
 <?php
+	define('PROJECT_NAME', '".$project_name_original."');
+	define('API_VERSION', '1.0');
 	define('DB_NAME', '".$database."');
 	define('DB_USER', '".$username."');
 	define('DB_PASSWORD', '".$password."');
@@ -370,7 +458,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Unity MySQL API Installer</title>
+        <title>Unity Web Hosting API</title>
         <link href="https://fonts.googleapis.com/css?family=Karla:400" rel="stylesheet" type="text/css">
         <style>
             html, body 
@@ -538,11 +626,11 @@
                     </td>
                 </tr>
               </table>
-                <div class="title">Unity MySQL API Installer</div><br/>
+                <div class="title">Unity Web Hosting API Installer</div><br/>
                   <form id="dataForm" action="?" method="post" autocomplete="off">
                     <input type="text" id="project_name" name="project_name" placeholder="Project Name ..."><br/>
-                    <input type="text" id="aes_key" name="aes_key" placeholder="AES Encryption Key ..."><br/>
-                    <input type="text" id="md5_key" name="md5_key" placeholder="MD5 Encryption Key ..."><br/>
+                    <input type="hidden" id="aes_key" name="aes_key" placeholder="AES Encryption Key ..."><!--<br/>-->
+                    <input type="hidden" id="md5_key" name="md5_key" placeholder="MD5 Encryption Key ..."><!--<br/>-->
                     <input type="text" id="database_host" name="database_host" placeholder="Database Host ..." value="localhost"><br/>
                     <input type="text" id="database_name" name="database_name" placeholder="Database Name ..."><br/>
                     <input type="text" id="database_user" name="database_user" placeholder="Database Username ..."><br/>
@@ -551,7 +639,7 @@
 				  <table width="100%">
 					<tr>
 						<td width="50%" align=Left>
-						<button id="generate_key" class="button-git" role="button" onclick="generateEncryptionKeys()">Generate Encryption Keys</button>
+						<!-- <button id="generate_key" class="button-git" role="button" onclick="generateEncryptionKeys()">Generate Encryption Keys</button> -->
 						</td>
 						<td width="50%" align=right>
 						<button id="confirm_install" class="button-git" role="button" onclick="confirmInstall()">Install</button><br/>
@@ -572,6 +660,7 @@
 <script>
   function confirmInstall() 
   {
+	generateEncryptionKeys();
     document.getElementById("info").innerHTML = "";
     var project = document.getElementById("project_name").value.trim();
     var database = document.getElementById("database_name").value.trim();
@@ -592,10 +681,6 @@
     {
 	    displayError("AES key can not be empty.");
     }
-    else if (aes.length != 32) 
-    {
-	    displayError("AES key must be 32 characters but you entered " + aes.length + " characters.");
-    }
     else if (isStringNullOrEmpty(md5)) 
     {
 	    displayError("MD5 key can not be empty.");
@@ -615,7 +700,7 @@
     else
     {
       document.getElementById("confirm_install").disabled = true;
-      document.getElementById("generate_key").disabled = true;
+      // document.getElementById("generate_key").disabled = true;
       document.getElementById('project_name').readOnly = true;
       document.getElementById('database_name').readOnly = true;
       document.getElementById('database_user').readOnly = true;
@@ -624,14 +709,14 @@
       document.getElementById('aes_key').readOnly = true;
       document.getElementById('md5_key').readOnly = true;
       document.getElementById('dataForm').submit();
-	    document.getElementById("info").innerHTML = "<br/>Installing ...";
+	  document.getElementById("info").innerHTML = "<br/>Installing ...";
     }
   }
 
   function generateEncryptionKeys() 
   {
-    document.getElementById("aes_key").value = generateKey(32);
-    document.getElementById("md5_key").value = generateKey(getRndomInteger(10, 20));
+    document.getElementById("aes_key").value = generateKey(getRndomInteger(25, 32));
+    document.getElementById("md5_key").value = generateKey(getRndomInteger(5, 15));
   }
 
   function generateKey(length) 
