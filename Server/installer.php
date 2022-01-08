@@ -19,6 +19,7 @@
       }
       else
       {
+        $have_permissions = does_have_mysql_permissions($connection);
         $accounts_table = mysqli_query($connection, "SELECT 1 from accounts LIMIT 1");
         if($accounts_table)
         {
@@ -270,8 +271,13 @@
                 </div>
                 <div class=\"alert\">
                   MD5 Encryption Key: <strong>" . $md5 . "</strong>
-                </div>
-              </div>
+                </div>".
+                $have_permissions ? "
+                <div class=\"alert\">
+                  WARNING: We detected that you might not have necessary mysql permissions. Installation might have been corrupted.
+                </div>"
+                " : ""
+              ."</div>
             </body>
             ";
             unlink(__FILE__);
@@ -422,45 +428,93 @@
 	  }
 	  return false;
   }
-  
+
   function get_base_path()
   {
-    $path = correct_path(getcwd());
-    if(substr_count($path, DIRECTORY_SEPARATOR . 'public_html') == 1)
+    $public_path = correct_path($_SERVER['DOCUMENT_ROOT']) . DIRECTORY_SEPARATOR;
+    $private_path = correct_path(dirname($public_path)) . DIRECTORY_SEPARATOR;
+    $public_folder = correct_path(basename($public_path));
+    if(is_writable($private_path) == false)
     {
-      $response = array();
-      $path = substr($path, 0, strpos($path, DIRECTORY_SEPARATOR . "public_html"));
-      $response['private_path'] = $path . DIRECTORY_SEPARATOR;
-      $response['public_path'] = $path . DIRECTORY_SEPARATOR . "public_html" . DIRECTORY_SEPARATOR;
-      $response['public_folder'] = "public_html";
-      return $response;
+      $private_path = $public_path;
     }
-    else if(substr_count($path, DIRECTORY_SEPARATOR . 'htdocs') == 1)
-    {
-      $response = array();
-      $path = substr($path, 0, strpos($path, DIRECTORY_SEPARATOR . "htdocs"));
-      $response['private_path'] = $path . DIRECTORY_SEPARATOR;
-      $response['public_path'] = $path . DIRECTORY_SEPARATOR . "htdocs" . DIRECTORY_SEPARATOR;
-      $response['public_folder'] = "htdocs";
-      return $response;
-    }
-    else if(substr_count($path, DIRECTORY_SEPARATOR . 'www') == 1)
-    {
-      $response = array();
-      $path = substr($path, 0, strpos($path, DIRECTORY_SEPARATOR . "www"));
-      $response['private_path'] = $path . DIRECTORY_SEPARATOR;
-      $response['public_path'] = $path . DIRECTORY_SEPARATOR . "www" . DIRECTORY_SEPARATOR;
-      $response['public_folder'] = "www";
-      return $response;
-    }
-    return null;
+    $response = array();
+    $response['private_path'] = $private_path;
+    $response['public_path'] = $public_path;
+    $response['public_folder'] = $public_folder;
+    return $response;
   }
   
   function correct_path($path)
   {
 	  return str_replace(array('/', '\\'), DIRECTORY_SEPARATOR, $path);
   }
-  
+
+  function does_have_mysql_permissions($connection)
+  {
+    $query = "SHOW GRANTS FOR CURRENT_USER";
+    $result = mysqli_query($connection, $query);
+    $select_permission = false;
+    $insert_permission = false;
+    $update_permission = false;
+    $references_permission = false;
+    $alter_permission = false;
+    $delete_permission = false;
+    $create_permission = false;
+    $index_permission = false;
+    if($result && mysqli_num_rows($result) > 0)
+    {
+      while($row = mysqli_fetch_assoc($result))
+      {
+        foreach ($row as &$value) 
+        {
+          $permissions = strtolower($value);
+          if (strpos($permissions, 'all') !== false) 
+          {
+            $select_permission = true;
+            $insert_permission = true;
+            $update_permission = true;
+            $references_permission = true;
+            $alter_permission = true;
+            $delete_permission = true;
+            $create_permission = true;
+            $index_permission = true;
+            break 2;
+          }
+          if (strpos($permissions, 'select') !== false) 
+          {
+            $select_permission = true;
+          }
+          if (strpos($permissions, 'insert') !== false) 
+          {
+            $insert_permission = true;
+          }
+          if (strpos($permissions, 'update') !== false) 
+          {
+            $update_permission = true;
+          }
+          if (strpos($permissions, 'references') !== false) 
+          {
+            $references_permission = true;
+          }
+          if (strpos($permissions, 'alter') !== false) 
+          {
+            $alter_permission = true;
+          }
+          if (strpos($permissions, 'create') !== false) 
+          {
+            $create_permission = true;
+          }
+          if (strpos($permissions, 'index') !== false) 
+          {
+            $index_permission = true;
+          }
+        }
+      }
+    }
+    return $select_permission && $insert_permission && $update_permission && $references_permission && $alter_permission && $delete_permission && $create_permission && $index_permission;
+  }
+
   function display_error($message)
   {
     echo "
