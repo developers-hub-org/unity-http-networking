@@ -24,16 +24,22 @@
         {
           $queries = array(
             "ALTER TABLE accounts ADD COLUMN id INT(11) AUTO_INCREMENT PRIMARY KEY",
+			"ALTER TABLE accounts ADD COLUMN is_verified TINYINT(1) DEFAULT 0",
             "ALTER TABLE accounts ADD COLUMN username VARCHAR(255)",
             "ALTER TABLE accounts ADD COLUMN password VARCHAR(255)",
+			"ALTER TABLE accounts ADD COLUMN firstname VARCHAR(255) DEFAULT ''",
+            "ALTER TABLE accounts ADD COLUMN lastname VARCHAR(255) DEFAULT ''",
             "ALTER TABLE accounts ADD COLUMN is_password_set TINYINT(1) DEFAULT 0",
             "ALTER TABLE accounts ADD COLUMN email VARCHAR(255) DEFAULT ''",
             "ALTER TABLE accounts ADD COLUMN is_email_verified TINYINT(1) DEFAULT 0",
             "ALTER TABLE accounts ADD COLUMN phone_number VARCHAR(255) DEFAULT ''",
+			"ALTER TABLE accounts ADD COLUMN phone_country VARCHAR(255) DEFAULT 'us'",
             "ALTER TABLE accounts ADD COLUMN is_phone_verified TINYINT(1) DEFAULT 0",
-			      "ALTER TABLE accounts ADD COLUMN picture_url VARCHAR(1000) DEFAULT ''",
+			"ALTER TABLE accounts ADD COLUMN picture_url VARCHAR(1000) DEFAULT ''",
             "ALTER TABLE accounts ADD COLUMN score INT(11) DEFAULT 0",
-            "ALTER TABLE accounts ADD COLUMN blocked TINYINT(1) DEFAULT 0"
+            "ALTER TABLE accounts ADD COLUMN blocked TINYINT(1) DEFAULT 0",
+			"ALTER TABLE accounts ADD COLUMN is_birthday_set TINYINT(1) DEFAULT 0",
+			"ALTER TABLE accounts ADD COLUMN birthday DATETIME DEFAULT CURRENT_TIMESTAMP"
           );
           for($i = 0; $i < count($queries); $i++) 
           {
@@ -42,8 +48,7 @@
         }
         else
         {
-          
-          $query = "CREATE TABLE IF NOT EXISTS accounts(id INT(11) AUTO_INCREMENT, username VARCHAR(255), password VARCHAR(255), is_password_set TINYINT(1) DEFAULT 0, email VARCHAR(255) DEFAULT '', is_email_verified TINYINT(1) DEFAULT 0, phone_number VARCHAR(255) DEFAULT '', is_phone_verified TINYINT(1) DEFAULT 0, picture_url VARCHAR(1000) DEFAULT '', score INT(11) DEFAULT 0, blocked TINYINT(1) DEFAULT 0, PRIMARY KEY (id))";
+          $query = "CREATE TABLE IF NOT EXISTS accounts(id INT(11) AUTO_INCREMENT, is_verified TINYINT(1) DEFAULT 0, username VARCHAR(255), password VARCHAR(255), firstname VARCHAR(255) DEFAULT '', lastname VARCHAR(255) DEFAULT '', is_password_set TINYINT(1) DEFAULT 0, email VARCHAR(255) DEFAULT '', is_email_verified TINYINT(1) DEFAULT 0, phone_number VARCHAR(255) DEFAULT '', phone_country VARCHAR(255) DEFAULT 'us', is_phone_verified TINYINT(1) DEFAULT 0, picture_url VARCHAR(1000) DEFAULT '', score INT(11) DEFAULT 0, blocked TINYINT(1) DEFAULT 0, is_birthday_set TINYINT(1) DEFAULT 0, birthday DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id))";
           mysqli_query($connection, $query);
         }
         $sessions_table = mysqli_query($connection, "SELECT 1 from sessions LIMIT 1");
