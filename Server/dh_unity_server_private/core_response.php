@@ -178,51 +178,47 @@
 				}
 				break;
 			case 987704: // CHANGE_PASSWORD
-				
+				include_once ($path . "/authentication.php");
+				if(isset($json->old_password))
+				{
+					$response = change_password(isset($json->id) ? $json->id : null, isset($json->username) ? $json->username : null, $json->old_password, $json->new_password, false, $response);
+				}
+				else
+				{
+					$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false);
+					if($auth["valid"] == true)
+					{
+						$response = change_password($auth["account_id"], null, null, $json->new_password, true, $response);
+					}
+					else
+					{
+						$response["error"] = $auth["error"];
+					}
+				}
 				break;
 			case 987705: // CHANGE_EMAIL
-				
+				include_once ($path . "/authentication.php");
+				$response = change_email($connection, $path, $json->username, $json->password, $json->session, $json->version, $json->email, $response);
 				break;
 			case 987706: // SEND_EMAIL_VERIFICATION_CODE
 				include_once ($path . "/authentication.php");
-				if(isset($json->username))
-				{
-					$email = send_email_verification_code($connection, $json->username, null, $path);
-				}
-				else if(isset($json->id))
-				{
-					$email = send_email_verification_code($connection, null, $json->id, $path);
-				}
-				else
-				{
-					$response["error"] = "USER_NOT_EXIST";
-				}
-				if($email != null)
-				{
-					$response["successful"] = $email["successful"];
-					if(isset($email["error"]))
-					{
-						$response["error"] = $email["error"];
-					}
-					if(isset($email["id"]))
-					{
-						$response["id"] = $email["id"];
-					}
-					if(isset($email["remained"]))
-					{
-						$response["remained"] = $email["remained"];
-					}
-				}
-				else
-				{
-					$response["error"] = "USER_NOT_EXISTS";
-				}
+				$response = send_email_verification_code($connection, isset($json->username) ? $json->username : null, isset($json->id) ? $json->id : null, $path, $response);
 				break;
 			case 987707: // CHANGE_PHONE_NUMBER
-				
+				include_once ($path . "/authentication.php");
+				$response = change_phone($connection, $path, $json->username, $json->password, $json->session, $json->version, $json->phone, $json->country, $response);
 				break;
 			case 987708: // SEND_PHONE_VERIFICATION_CODE
-				
+				include_once ($path . "/authentication.php");
+				$response = send_phone_verification_code($connection, isset($json->username) ? $json->username : null, isset($json->id) ? $json->id : null, $path, $response);
+				break;
+			case 987709: // VERIFY_PHONE_NUMBER
+				include_once ($path . "/authentication.php");
+				$response = verify_phone($connection, isset($json->username) ? $json->username : null, isset($json->id) ? $json->id : null, $json->code, $response);
+				break;
+			case 987710: // VERIFY_EMAIL
+				include_once ($path . "/authentication.php");
+				$response = verify_email($connection, isset($json->username) ? $json->username : null, isset($json->id) ? $json->id : null, $json->code, $response);
 				break;
 		}
 		return $response;
@@ -239,7 +235,12 @@
 		// $headers .= 'Bcc: welcome2@example.com' . "\r\n"; 
 		return mail($to, $subject, $html, $headers);
 	}
-
+	
+	function send_sms($to, $text)
+	{
+		return false; // TODO
+	}
+	
 	function is_in_blacklist($connection, $ip)
 	{
 		$query = "SELECT id FROM blacklist WHERE ip = '$ip'";
@@ -298,4 +299,9 @@
 		return false;
 	}
 
+	function is_phone_valid($phone, $country)
+	{
+		return true; // TODO
+	}
+	
 ?>
