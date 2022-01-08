@@ -340,17 +340,17 @@
     chmod($public_path . "files.ini", 0600);
 
     if(file_exists($private_path . "messaging.php")) {unlink($private_path . "messaging.php");}
-    $downloaded = download_file($private_path . "messaging.php", $private_path);
+    $downloaded = download_file($repository_link . "messaging.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "messaging.php", 0600);
 
     if(file_exists($private_path . "authentication.php")) {unlink($private_path . "authentication.php");}
-    $downloaded = download_file($private_path . "authentication.php", $private_path);
+    $downloaded = download_file($repository_link . "authentication.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "authentication.php", 0600);
 
     if(file_exists($private_path . "config.php")) {unlink($private_path . "config.php");}
-    $downloaded = download_file($private_path . "config.php", $private_path);
+    $downloaded = download_file($repository_link . "config.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "config.php", 0600);
 
@@ -369,28 +369,28 @@
     
     // TODO: If control already exist then dont delete it, just add new content
     if(file_exists($private_path . "control.php")) {unlink($private_path . "control.php");}
-    $downloaded = download_file($private_path . "control.php", $private_path);
+    $downloaded = download_file($repository_link . "control.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "control.php", 0600);
 
     if(file_exists($private_path . "connection.php")) {unlink($private_path . "connection.php");}
-    $downloaded = download_file($private_path . "connection.php", $private_path);
+    $downloaded = download_file($repository_link . "connection.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "connection.php", 0600);
 
     if(file_exists($private_path . "encryption.php")) {unlink($private_path . "encryption.php");}
-    $downloaded = download_file($private_path . "encryption.php", $private_path);
+    $downloaded = download_file($repository_link . "encryption.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "encryption.php", 0600);
 
     if(file_exists($private_path . "core_response.php")) {unlink($private_path . "core_response.php");}
-    $downloaded = download_file($private_path . "core_response.php", $private_path);
+    $downloaded = download_file($repository_link . "core_response.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "core_response.php", 0600);
 
     if(!file_exists($private_path . "response.php"))
     {
-      $downloaded = download_file($private_path . "response.php", $private_path);
+      $downloaded = download_file($repository_link . "response.php", $private_path);
       if(!$downloaded){return false;}
     }
     chmod($private_path . "response.php", 0600);
