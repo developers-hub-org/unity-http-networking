@@ -211,9 +211,8 @@
 		return null;
 	}
 	
-	function send_email_verification_code($connection, $username, $id, $path)
+	function send_email_verification_code($connection, $username, $id, $path, $response)
 	{
-		$response = array();
 		$response["successful"] = false;
 		$response["error"] = "USER_NOT_EXIST";
 		$query = "";
@@ -252,49 +251,58 @@
 			}
 			if(is_email_valid($email))
 			{
-				// REMINDER: Email code type = 1
-				$query = "SELECT TIMESTAMPDIFF(SECOND, create_time, expire_time) AS remained FROM verification_codes WHERE account_id = $id AND type = 1 AND is_used = 0 AND expire_time > CURRENT_TIMESTAMP";
+				$query = "SELECT id FROM accounts WHERE email = '$email' AND is_email_verified > 0 AND id <> $id";
 				$result = mysqli_query($connection, $query);
 				if($result && mysqli_num_rows($result) > 0)
 				{
-					while($row = mysqli_fetch_assoc($result))
-					{
-						$response["error"] = "ALREADY_SENT";
-						$response["remained"] = $row["remained"];
-						return $response;
-					}
-				}
-				if(file_exists($path . "/templates/email_verifIcation_code_template.html"))
-				{
-					$code = random_int(100000, 999999);
-					$company = COMPANY_NAME;
-					$company_email = COMPANY_EMAIL;
-					$logo = COMPANY_LOGO;
-					$time = EMAIL_VERIFICATION_CODE_EXPIRE_TIME;
-					$html =  file_get_contents($path . "/templates/email_verifIcation_code_template.html");
-
-					$html = str_replace("[company_logo_url]", $logo, $html);
-					$html = str_replace("[company_name]", $company, $html);
-					$html = str_replace("[user_email_address]", $email, $html);
-					$html = str_replace("[verification_code]", $code, $html);
-					$html = str_replace("[remained_minutes]", ceil($time / 60), $html);
-					$html = str_replace("[copyright_footer]", date("Y") . " " . $company, $html);
-
-					if(send_email($company_email, $company, $email, "Email Verification Code", $html))
-					{
-						$query = "INSERT INTO verification_codes (code, type, account_id, expire_time) VALUES('$code', 1, $id, CURRENT_TIMESTAMP + INTERVAL $time SECOND)";
-						mysqli_query($connection, $query);
-						$response["successful"] = true;
-						$response["remained"] = $time;
-					}
-					else
-					{
-						$response["error"] = "ERROR_SEND_EMAIL";
-					}
+					$response["error"] = "EMAIL_VERIFIED_BY_ANOTHER_USER";
 				}
 				else
 				{
-					$response["error"] = "NO_TEMPLATE";
+					// REMINDER: Email code type = 1
+					$query = "SELECT TIMESTAMPDIFF(SECOND, create_time, expire_time) AS remained FROM verification_codes WHERE account_id = $id AND type = 1 AND is_used = 0 AND expire_time > CURRENT_TIMESTAMP";
+					$result = mysqli_query($connection, $query);
+					if($result && mysqli_num_rows($result) > 0)
+					{
+						while($row = mysqli_fetch_assoc($result))
+						{
+							$response["error"] = "ALREADY_SENT";
+							$response["remained"] = $row["remained"];
+							return $response;
+						}
+					}
+					if(file_exists($path . "/templates/email_verifIcation_code_template.html"))
+					{
+						$code = random_int(100000, 999999);
+						$company = COMPANY_NAME;
+						$company_email = COMPANY_EMAIL;
+						$logo = COMPANY_LOGO;
+						$time = EMAIL_VERIFICATION_CODE_EXPIRE_TIME;
+						$html =  file_get_contents($path . "/templates/email_verifIcation_code_template.html");
+
+						$html = str_replace("[company_logo_url]", $logo, $html);
+						$html = str_replace("[company_name]", $company, $html);
+						$html = str_replace("[user_email_address]", $email, $html);
+						$html = str_replace("[verification_code]", $code, $html);
+						$html = str_replace("[remained_minutes]", ceil($time / 60), $html);
+						$html = str_replace("[copyright_footer]", date("Y") . " " . $company, $html);
+
+						if(send_email($company_email, $company, $email, "Email Verification Code", $html))
+						{
+							$query = "INSERT INTO verification_codes (code, type, account_id, expire_time) VALUES('$code', 1, $id, CURRENT_TIMESTAMP + INTERVAL $time SECOND)";
+							mysqli_query($connection, $query);
+							$response["successful"] = true;
+							$response["remained"] = $time;
+						}
+						else
+						{
+							$response["error"] = "ERROR_SEND_EMAIL";
+						}
+					}
+					else
+					{
+						$response["error"] = "NO_TEMPLATE";
+					}
 				}
 			}
 			else
@@ -305,9 +313,322 @@
 		return $response;
 	}
 
-	function change_password($username, $old_password, $new_password)
+	function send_phone_verification_code($connection, $username, $id, $path, $response)
 	{
-
+		$response["successful"] = false;
+		$response["error"] = "USER_NOT_EXIST";
+		$query = "";
+		if($username != null)
+		{
+			$query = "SELECT id, phone_number, phone_country, is_phone_verified FROM accounts WHERE username = '$username'";
+		}
+		else if($id != null)
+		{
+			$query = "SELECT id, phone_number, phone_country, is_phone_verified FROM accounts WHERE id = $id";
+		}
+		else
+		{
+			return $response;
+		}
+		$result = mysqli_query($connection, $query);
+		if($result && mysqli_num_rows($result) == 1)
+		{
+			$id = 0;
+			$is_verified = false;
+			$phone = "+1";
+			$country = "us";
+			while($row = mysqli_fetch_assoc($result))
+			{
+				if($row["is_phone_verified"] > 0)
+				{
+					$is_verified = true;
+				}
+				$id = $row["id"];
+				$phone = $row["phone_number"];
+				$country = $row["phone_country"];
+			}
+			$response["id"] = $id;
+			if($is_verified)
+			{
+				$response["error"] = "ALREADY_VERIFIED";
+				return $response;
+			}
+			if(is_phone_valid($phone, $country))
+			{
+				$query = "SELECT id FROM accounts WHERE phone_number = '$phone' AND phone_country = $country AND is_phone_verified > 0 AND id <> $id";
+				$result = mysqli_query($connection, $query);
+				if($result && mysqli_num_rows($result) > 0)
+				{
+					$response["error"] = "PHONE_VERIFIED_BY_ANOTHER_USER";
+				}
+				else
+				{
+					// REMINDER: Phone code type = 2
+					$query = "SELECT TIMESTAMPDIFF(SECOND, create_time, expire_time) AS remained FROM verification_codes WHERE account_id = $id AND type = 2 AND is_used = 0 AND expire_time > CURRENT_TIMESTAMP";
+					$result = mysqli_query($connection, $query);
+					if($result && mysqli_num_rows($result) > 0)
+					{
+						while($row = mysqli_fetch_assoc($result))
+						{
+							$response["error"] = "ALREADY_SENT";
+							$response["remained"] = $row["remained"];
+							return $response;
+						}
+					}
+					$code = random_int(100000, 999999);
+					$company = COMPANY_NAME;
+					$time = PHONE_VERIFICATION_CODE_EXPIRE_TIME;
+					$text = $code . " is your " . $company . " verification code. It will expires in " . ceil($time / 60) . " minutes.";
+					if(send_sms($phone, $text))
+					{
+						$query = "INSERT INTO verification_codes (code, type, account_id, expire_time) VALUES('$code', 2, $id, CURRENT_TIMESTAMP + INTERVAL $time SECOND)";
+						mysqli_query($connection, $query);
+						$response["successful"] = true;
+						$response["remained"] = $time;
+					}
+					else
+					{
+						$response["error"] = "ERROR_SEND_SMS";
+					}
+				}
+			}
+			else
+			{
+				$response["error"] = "VALID_PHONE_NOT_SET";
+			}
+		}
+		else
+		{
+			$response["error"] = "USER_NOT_EXISTS";
+		}
+		return $response;
+	}
+	
+	function verify_email($connection, $username, $id, $code, $response)
+	{
+		$response["successful"] = false;
+		$query = "";
+		if($username != null)
+		{
+			$query = "SELECT id, is_email_verified FROM accounts WHERE username = '$username'";
+		}
+		else if($id != null)
+		{
+			$query = "SELECT id, is_email_verified FROM accounts WHERE id = $id";
+		}
+		else
+		{
+			return $response;
+		}
+		$result = mysqli_query($connection, $query);
+		if($result && mysqli_num_rows($result) == 1)
+		{
+			$is_verified = false;
+			while($row = mysqli_fetch_assoc($result))
+			{
+				if($row["is_email_verified"] > 0)
+				{
+					$is_verified = true;
+				}
+				$id = $row["id"];
+			}
+			if($is_verified)
+			{
+				$response["error"] = "ALREADY_VERIFIED";
+			}
+			else
+			{
+				$query = "SELECT id FROM verification_codes WHERE account_id = $id AND is_used = 0 AND code = $code AND type = 1 AND expire_time > CURRENT_TIMESTAMP";
+				$result = mysqli_query($connection, $query);
+				if($result && mysqli_num_rows($result) > 0)
+				{
+					$query = "UPDATE verification_codes SET is_used = 1 WHERE account_id = $id AND is_used = 0 AND type = 1 AND expire_time > CURRENT_TIMESTAMP";
+					mysqli_query($connection, $query);
+					$query = "UPDATE accounts SET is_email_verified = 1 WHERE id = $id";
+					mysqli_query($connection, $query);
+					$response["successful"] = true;
+				}
+				else
+				{
+					$response["error"] = "CODE_NOT_VALID";
+				}
+			}
+		}
+		else
+		{
+			$response["error"] = "USER_NOT_EXIST";
+		}
+		return $response;
+	}
+	
+	function verify_phone($connection, $username, $id, $code, $response)
+	{
+		$response["successful"] = false;
+		$query = "";
+		if($username != null)
+		{
+			$query = "SELECT id, is_phone_verified FROM accounts WHERE username = '$username'";
+		}
+		else if($id != null)
+		{
+			$query = "SELECT id, is_phone_verified FROM accounts WHERE id = $id";
+		}
+		else
+		{
+			return $response;
+		}
+		$result = mysqli_query($connection, $query);
+		if($result && mysqli_num_rows($result) == 1)
+		{
+			$is_verified = false;
+			while($row = mysqli_fetch_assoc($result))
+			{
+				if($row["is_phone_verified"] > 0)
+				{
+					$is_verified = true;
+				}
+				$id = $row["id"];
+			}
+			if($is_verified)
+			{
+				$response["error"] = "ALREADY_VERIFIED";
+			}
+			else
+			{
+				$query = "SELECT id FROM verification_codes WHERE account_id = $id AND is_used = 0 AND code = $code AND type = 2 AND expire_time > CURRENT_TIMESTAMP";
+				$result = mysqli_query($connection, $query);
+				if($result && mysqli_num_rows($result) > 0)
+				{
+					$query = "UPDATE verification_codes SET is_used = 1 WHERE account_id = $id AND is_used = 0 AND type = 2 AND expire_time > CURRENT_TIMESTAMP";
+					mysqli_query($connection, $query);
+					$query = "UPDATE accounts SET is_phone_verified = 1 WHERE id = $id";
+					mysqli_query($connection, $query);
+					$response["successful"] = true;
+				}
+				else
+				{
+					$response["error"] = "CODE_NOT_VALID";
+				}
+			}
+		}
+		else
+		{
+			$response["error"] = "USER_NOT_EXIST";
+		}
+		return $response;
+	}
+	
+	function change_password($id, $username, $old_password, $new_password, $is_authenticated, $response)
+	{
+		$successful = false;
+		if($is_authenticated)
+		{
+			$successful = true;
+		}
+		else
+		{
+			$query = "";
+			if($username != null)
+			{
+				$query = "SELECT password FROM accounts WHERE username = '$username'";
+			}
+			else
+			{
+				$query = "SELECT password FROM accounts WHERE id = $id";
+			}
+			$result = mysqli_query($connection, $query);
+			if($result && mysqli_num_rows($result) == 1)
+			{
+				$password = "";
+				while($row = mysqli_fetch_assoc($result))
+				{
+					$password = $row["password"];
+				}
+				if($password == $old_password)
+				{
+					$successful = true;
+				}
+				else
+				{
+					$response["error"] = "WRONG_OLD_PASSWORD";
+				}
+			}
+			else
+			{
+				$response["error"] = "USER_NOT_EXISTS";
+			}
+		}
+		if($successful)
+		{
+			if($username != null)
+			{
+				$query = "UPDATE accounts SET password = '$new_password', is_password_set = 1 WHERE username = '$username'";
+			}
+			else
+			{
+				$query = "UPDATE accounts SET password = '$new_password', is_password_set = 1 WHERE id = $id";
+			}
+			mysqli_query($connection, $query);
+			$response["successful"] = true;
+			$response["new_password"] = $new_password;
+		}
+		return $response;
+	}
+	
+	function change_email($connection, $path, $username, $password, $session, $version, $email, $response)
+	{
+		$auth = authenticate($connection, $path, $username, $password, $session, false, $version, false);
+		if($auth["valid"] == true)
+		{
+			$id = $auth["account_id"];
+			$query = "SELECT id FROM accounts WHERE email = '$email' AND is_email_verified > 0 AND id <> $id";
+			$result = mysqli_query($connection, $query);
+			if($result && mysqli_num_rows($result) > 0)
+			{
+				$response["error"] = "EMAIL_TAKEN";
+			}
+			else
+			{
+				$query = "UPDATE accounts SET email = '$email', is_email_verified = 0 WHERE id = $id AND email <> $email";
+				mysqli_query($connection, $query);
+				$query = "UPDATE verification_codes SET expire_time = CURRENT_TIMESTAMP WHERE account_id = $id AND is_used = 0 AND type = 1 AND expire_time > CURRENT_TIMESTAMP";
+				mysqli_query($connection, $query);
+				$response["successful"] = true;
+			}
+		}
+		else
+		{
+			$response["error"] = $auth["error"];
+		}
+		return $response;
+	}
+	
+	function change_phone($connection, $path, $username, $password, $session, $version, $phone, $country, $response)
+	{
+		$auth = authenticate($connection, $path, $username, $password, $session, false, $version, false);
+		if($auth["valid"] == true)
+		{
+			$id = $auth["account_id"];
+			$query = "SELECT id FROM accounts WHERE phone_number = '$phone' AND phone_country = $country AND is_phone_verified > 0 AND id <> $id";
+			$result = mysqli_query($connection, $query);
+			if($result && mysqli_num_rows($result) > 0)
+			{
+				$response["error"] = "PHONE_NUMBER_TAKEN";
+			}
+			else
+			{
+				$query = "UPDATE accounts SET phone_number = '$phone', is_phone_verified = 0, phone_country = $country WHERE id = $id AND (phone_number <> $phone || phone_country <> $country)";
+				mysqli_query($connection, $query);
+				$query = "UPDATE verification_codes SET expire_time = CURRENT_TIMESTAMP WHERE account_id = $id AND is_used = 0 AND type = 2 AND expire_time > CURRENT_TIMESTAMP";
+				mysqli_query($connection, $query);
+				$response["successful"] = true;
+			}
+		}
+		else
+		{
+			$response["error"] = $auth["error"];
+		}
+		return $response;
 	}
 	
 	function authenticate($connection, $path, $username, $password, $session, $register, $version, $create_session_if_not_exists)
