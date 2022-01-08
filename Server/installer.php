@@ -306,51 +306,51 @@
       mkdir($private_path . "templates", 0777, true);
     }
 
-    $repository_link = "";
+    $repository_link = "https://raw.githubusercontent.com/developers-hub-org/unity-http-networking/main/Server/";
 
     if(file_exists($public_path . "api.php")) {unlink($public_path . "api.php");}
-    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_public/api.php", $public_path);
+    $downloaded = download_file($repository_link . "api.php", $public_path);
     if(!$downloaded){return false;}
     
-    if(file_exists($private_path . "dh_unity_server_core.php")) {unlink($private_path . "dh_unity_server_core.php");}
-    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/dh_unity_server_core.php", $private_path);
+    if(file_exists($private_path . "core.php")) {unlink($private_path . "core.php");}
+    $downloaded = download_file($repository_link . "core.php", $private_path);
     if(!$downloaded)
     {
       $private_path = $public_path;
-      if(file_exists($private_path . "dh_unity_server_core.php")) {unlink($private_path . "dh_unity_server_core.php");}
-      $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/dh_unity_server_core.php", $private_path);
+      if(file_exists($private_path . "core.php")) {unlink($private_path . "core.php");}
+      $downloaded = download_file($repository_link . "core.php", $private_path);
       if(!$downloaded){return false;}
     }
 
     if(file_exists($private_path . "templates/" . "email_verification_code_template.html")) {unlink($private_path . "templates/" . "email_verification_code_template.html");}
-    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/templates/email_verifIcation_code_template.html", $private_path . "templates/");
+    $downloaded = download_file($repository_link . "templates/email_verifIcation_code_template.html", $private_path . "templates/");
     if(!$downloaded){return false;}
     chmod($private_path . "templates/" . "email_verification_code_template.html", 0600);
 
     if(file_exists($public_path . "files.ini")) {unlink($public_path . "files.ini");}
-    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_public/files.ini", $public_path);
+    $downloaded = download_file($repository_link . "files.ini", $public_path);
     if(!$downloaded){return false;}
 
     $prefix = generate_random_string(rand(10, 20));
-    $core_file_name = "unity_core_" . $project_name . "_" . $prefix . ".php";
-    $link_file_name = "unity_link_" . $project_name . "_" . $prefix . ".ini";
-    rename($private_path . "dh_unity_server_core.php", $private_path . $core_file_name);
+    $core_file_name = "core_" . $project_name . "_" . $prefix . ".php";
+    $link_file_name = "link_" . $project_name . "_" . $prefix . ".ini";
+    rename($private_path . "core.php", $private_path . $core_file_name);
     file_put_contents($public_path . "files.ini", "core_file_name = " . $core_file_name . "\n" . "link_file_name = " . $link_file_name . "");
     chmod($private_path . $core_file_name, 0600);
     chmod($public_path . "files.ini", 0600);
 
     if(file_exists($private_path . "messaging.php")) {unlink($private_path . "messaging.php");}
-    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/messaging.php", $private_path);
+    $downloaded = download_file($private_path . "messaging.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "messaging.php", 0600);
 
     if(file_exists($private_path . "authentication.php")) {unlink($private_path . "authentication.php");}
-    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/authentication.php", $private_path);
+    $downloaded = download_file($private_path . "authentication.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "authentication.php", 0600);
 
     if(file_exists($private_path . "config.php")) {unlink($private_path . "config.php");}
-    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/config.php", $private_path);
+    $downloaded = download_file($private_path . "config.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "config.php", 0600);
 
@@ -367,29 +367,30 @@
 ?>";
     file_put_contents($private_path . "config.php", $confog_data);
     
+    // TODO: If control already exist then dont delete it, just add new content
     if(file_exists($private_path . "control.php")) {unlink($private_path . "control.php");}
-    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/control.php", $private_path);
+    $downloaded = download_file($private_path . "control.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "control.php", 0600);
 
     if(file_exists($private_path . "connection.php")) {unlink($private_path . "connection.php");}
-    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/connection.php", $private_path);
+    $downloaded = download_file($private_path . "connection.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "connection.php", 0600);
 
     if(file_exists($private_path . "encryption.php")) {unlink($private_path . "encryption.php");}
-    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/encryption.php", $private_path);
+    $downloaded = download_file($private_path . "encryption.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "encryption.php", 0600);
 
     if(file_exists($private_path . "core_response.php")) {unlink($private_path . "core_response.php");}
-    $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/core_response.php", $private_path);
+    $downloaded = download_file($private_path . "core_response.php", $private_path);
     if(!$downloaded){return false;}
     chmod($private_path . "core_response.php", 0600);
 
     if(!file_exists($private_path . "response.php"))
     {
-      $downloaded = download_file("https://raw.githubusercontent.com/dh-org/unity-mysql-api/main/Server/dh_unity_server_private/response.php", $private_path);
+      $downloaded = download_file($private_path . "response.php", $private_path);
       if(!$downloaded){return false;}
     }
     chmod($private_path . "response.php", 0600);
