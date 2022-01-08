@@ -272,11 +272,11 @@
                 <div class=\"alert\">
                   MD5 Encryption Key: <strong>" . $md5 . "</strong>
                 </div>".
-                $have_permissions ? "
+                (!$have_permissions ? "
                 <div class=\"alert\">
                   WARNING: We detected that you might not have necessary mysql permissions. Installation might have been corrupted.
-                </div>"
-                " : ""
+                </div>
+                " : "")
               ."</div>
             </body>
             ";
