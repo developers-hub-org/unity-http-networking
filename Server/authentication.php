@@ -1,5 +1,13 @@
 <?php
 
+	/*
+		Verification Code Types:
+		1: Email Verification
+		2: Phone Verification
+		3: Change Password With Email
+		4: Change Password With Phone
+	*/
+
 	function get_user_data_by_id($connection, $path, $id, $block_check_id)
 	{
 		return get_user_data($connection, $path, $id, null, $block_check_id);
@@ -518,44 +526,148 @@
 		return $response;
 	}
 	
-	function change_password($id, $username, $old_password, $new_password, $is_authenticated, $response)
+	function change_password($connection, $path, $version, $id, $username, $password, $session, $old_password, $new_password, $code, $email, $phone, $response)
 	{
 		$successful = false;
-		if($is_authenticated)
+		$response["error"] = "USER_NOT_EXISTS";
+		if($old_password != null && ($id != null || $username != null))
 		{
-			$successful = true;
-		}
-		else
-		{
-			$query = "";
 			if($username != null)
 			{
-				$query = "SELECT password FROM accounts WHERE username = '$username'";
+				$query = "SELECT id, username, password FROM accounts WHERE username = '$username'";
 			}
 			else
 			{
-				$query = "SELECT password FROM accounts WHERE id = $id";
+				$query = "SELECT id, username, password FROM accounts WHERE id = $id";
 			}
 			$result = mysqli_query($connection, $query);
 			if($result && mysqli_num_rows($result) == 1)
 			{
 				$password = "";
+				$username = "";
 				while($row = mysqli_fetch_assoc($result))
 				{
 					$password = $row["password"];
+					$username = $row["username"];
+					$id = $row["id"];
 				}
 				if($password == $old_password)
 				{
 					$successful = true;
+					$response["username"] = $username;
 				}
 				else
 				{
 					$response["error"] = "WRONG_OLD_PASSWORD";
 				}
 			}
+		}
+		else if($code != null && ($email != null || $phone != null))
+		{
+			if($email != null)
+			{
+				$query = "SELECT id, account_id FROM verification_codes WHERE code = '$code' AND is_used = 0 AND type = 3 AND expire_time > CURRENT_TIMESTAMP";
+			}
 			else
 			{
-				$response["error"] = "USER_NOT_EXISTS";
+				$query = "SELECT id, account_id FROM verification_codes WHERE code = '$code' AND is_used = 0 AND type = 4 AND expire_time > CURRENT_TIMESTAMP";
+			}
+			$result = mysqli_query($connection, $query);
+			if($result && mysqli_num_rows($result) > 0)
+			{
+				$code_id = 0;
+				$account_id = 0;
+				while($row = mysqli_fetch_assoc($result))
+				{
+					$code_id = $row["id"];
+					$id = $row["account_id"];
+				}
+				if($email != null)
+				{
+					$query = "SELECT username, email, is_email_verified FROM accounts WHERE id = $id";
+					$result = mysqli_query($connection, $query);
+					if($result && mysqli_num_rows($result) == 1)
+					{
+						$user_email = "#";
+						$is_email_verified = false;
+						$username = "";
+						while($row = mysqli_fetch_assoc($result))
+						{
+							$user_email = $row["email"];
+							$username = $row["username"];
+							$is_email_verified = ($row["is_email_verified"] > 0);
+						}
+						if($user_email == $email && $is_email_verified)
+						{
+							$query = "UPDATE verification_codes SET is_used = 1 WHERE id = $code_id";
+							mysqli_query($connection, $query);
+							$successful = true;
+							$response["username"] = $username;
+						}
+						else
+						{
+							$response["error"] = "EMAIL_NOT_VALID";
+						}
+					}
+				}
+				else
+				{
+					$query = "SELECT username, phone_number, is_phone_verified FROM accounts WHERE id = $id";
+					$result = mysqli_query($connection, $query);
+					if($result && mysqli_num_rows($result) == 1)
+					{
+						$user_phone = "#";
+						$is_phone_verified = false;
+						$username = "";
+						while($row = mysqli_fetch_assoc($result))
+						{
+							$user_phone = $row["phone_number"];
+							$username = $row["username"];
+							$is_phone_verified = ($row["is_phone_verified"] > 0);
+						}
+						if($user_phone == $phone && $is_phone_verified)
+						{
+							$query = "UPDATE verification_codes SET is_used = 1 WHERE id = $code_id";
+							mysqli_query($connection, $query);
+							$successful = true;
+							$response["username"] = $username;
+						}
+						else
+						{
+							$response["error"] = "PHONE_NOT_VALID";
+						}
+					}
+				}
+			}
+			else
+			{
+				$response["error"] = "CODE_NOT_VALID";
+			}
+		}
+		else if ($password != null && $session != null && $username != null)
+		{
+			$auth = authenticate($connection, $path, $username, $password, $session, false, $version, false);
+			if($auth["valid"] == true)
+			{
+				$id = $auth["account_id"];
+				$query = "SELECT username FROM accounts WHERE id = $id AND is_password_set <= 0";
+				$result = mysqli_query($connection, $query);
+				if($result && mysqli_num_rows($result) == 1)
+				{
+					while($row = mysqli_fetch_assoc($result))
+					{
+						$username = $row["username"];
+					}
+					$successful = true;
+				}
+				else
+				{
+					$response["error"] = "PASSWORD_ALREADY_SET_FOR_FIRST_TIME";
+				}
+			}
+			else
+			{
+				$response["error"] = $auth["error"];
 			}
 		}
 		if($successful)
