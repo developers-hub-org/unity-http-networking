@@ -179,22 +179,7 @@
 				break;
 			case 987704: // CHANGE_PASSWORD
 				include_once ($path . "/authentication.php");
-				if(isset($json->old_password))
-				{
-					$response = change_password(isset($json->id) ? $json->id : null, isset($json->username) ? $json->username : null, $json->old_password, $json->new_password, false, $response);
-				}
-				else
-				{
-					$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false);
-					if($auth["valid"] == true)
-					{
-						$response = change_password($auth["account_id"], null, null, $json->new_password, true, $response);
-					}
-					else
-					{
-						$response["error"] = $auth["error"];
-					}
-				}
+				$response = change_password($connection, $path, $json->version, isset($json->id) ? $json->id : null, isset($json->username) ? $json->username : null, isset($json->password) ? $json->password : null, isset($json->session) ? $json->session : null, isset($json->old_password) ? $json->old_password : null, $json->new_password, isset($json->code) ? $json->code : null, isset($json->email) ? $json->email : null, isset($json->phone) ? $json->phone : null, $response);
 				break;
 			case 987705: // CHANGE_EMAIL
 				include_once ($path . "/authentication.php");
