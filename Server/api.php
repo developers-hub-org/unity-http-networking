@@ -15,11 +15,10 @@
 			if(file_exists($files_ini['core_file_name']))
 			{
 				$config = $files_ini['core_file_name'];
-				$create_link = false;
 			}
 			else
 			{
-				$link_ini_path = get_base_path() . DIRECTORY_SEPARATOR . $files_ini['link_file_name'];
+				$link_ini_path = get_root_path() . $files_ini['link_file_name'];
 				$config = null;
 				$create_link = true;
 				if(is_file($link_ini_path))
@@ -56,10 +55,10 @@
 	
 	function get_file_path($file_name)
 	{
-	    $iterator = new RecursiveDirectoryIterator(get_base_path());
+	    $iterator = new RecursiveDirectoryIterator(get_root_path());
         foreach(new RecursiveIteratorIterator($iterator) as $file)
         {
-            if ($file->getExtension() == 'php') 
+            if ($file->getExtension() == 'php')
             {
                 if($file->getFilename() == $file_name)
                 {
@@ -70,6 +69,7 @@
         return null;
 	}
 	
+	/*
 	function get_base_path()
 	{
 		$path = correct_path(getcwd());
@@ -89,6 +89,18 @@
 			return $path . DIRECTORY_SEPARATOR;
 		}
 		return null;
+	}
+	*/
+
+	function get_root_path()
+	{
+		$public_path = correct_path($_SERVER['DOCUMENT_ROOT']) . DIRECTORY_SEPARATOR;
+		$private_path = correct_path(dirname($public_path)) . DIRECTORY_SEPARATOR;
+		if(is_writable($private_path) == false)
+		{
+		  $private_path = $public_path;
+		}
+		return $private_path;
 	}
 	
 	function correct_path($path)
