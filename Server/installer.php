@@ -1,5 +1,5 @@
 <?php
-  ini_set('display_errors', '0');
+  //ini_set('display_errors', '0');
   if (!empty($_POST))
   {
     if(isset($_POST['project_name']) && isset($_POST['database_name']) && isset($_POST['database_user']) && isset($_POST['database_host']) && isset($_POST['database_pass']) && isset($_POST['aes_key']) && isset($_POST['md5_key']))
@@ -226,14 +226,6 @@
           $project_name = str_replace(" ", "_", strtolower($project));
           $private_path = $path['private_path'] . "unity_projects" . DIRECTORY_SEPARATOR . $project_name . DIRECTORY_SEPARATOR;
           $public_path = $path['public_path'] . "unity_projects" . DIRECTORY_SEPARATOR . $project_name . DIRECTORY_SEPARATOR;
-          if (!file_exists($private_path)) 
-          {
-            mkdir($private_path, 0777, true); // TODO : This could fail
-          }
-          if (!file_exists($public_path)) 
-          {
-            mkdir($public_path, 0777, true);
-          }
           if(download_repository($public_path, $private_path, $project, $project_name, $database, $username, $password, $aes, $md5, $host))
           {
             $api_link = get_base_url();
@@ -254,12 +246,14 @@
             <style>
               html, body {height: 100%;}
               .container {margin: auto; text-align: center; height: 100%; width: 100%; vertical-align: middle;}
-              .alert {padding: 20px; background-color: #009b77; color: white;}
+              .alert {padding: 20px; color: white;}
               body {font-family: 'Sora', serif; font-size: 15px;}
             </style>
             </head>
-            <body>
+            <body style=\"background-color:#009b77;\">
               <div class=\"container\">
+				<br/>
+				<br/>
                 <div class=\"alert\">
                   Installation has been completed successfully.
                 </div>
@@ -307,36 +301,56 @@
 
   function download_repository($public_path, $private_path, $project_name_original, $project_name, $database, $username, $password, $aes, $md5, $host)
   {
+	
+	set_time_limit(120);
+	
+	if ($private_path != $public_path && !file_exists($private_path)) 
+	{
+		mkdir($private_path, 0777, true);
+	}
+	if (!file_exists($public_path)) 
+	{
+		mkdir($public_path, 0777, true);
+	}
     if (!file_exists($private_path . "templates")) 
     {
       mkdir($private_path . "templates", 0777, true);
     }
-
+	
     $repository_link = "https://raw.githubusercontent.com/developers-hub-org/unity-http-networking/main/Server/";
-
+	/*
+	$files_to_download = array(
+		$repository_link . "api.php" => $public_path . "api.php",
+		$repository_link . "files.ini" => $public_path . "files.ini",
+		$repository_link . "core.php" => $private_path . "api.php",
+		$repository_link . "authentication.php" => $private_path . "authentication.php",
+		$repository_link . "messaging.php" => $private_path . "messaging.php",
+		$repository_link . "config.php" => $private_path . "config.php",
+		$repository_link . "core_response.php" => $private_path . "core_response.php",
+		$repository_link . "encryption.php" => $private_path . "encryption.php",
+		$repository_link . "connection.php" => $private_path . "connection.php",
+		$repository_link . "control.php" => $private_path . "control.php",
+		$repository_link . "response.php" => $private_path . "response.php",
+		$repository_link . "templates/email_verifIcation_code_template.html" => $private_path . "templates/email_verification_code_template.html"
+	);
+	*/
+	
     if(file_exists($public_path . "api.php")) {unlink($public_path . "api.php");}
     $downloaded = download_file($repository_link . "api.php", $public_path);
     if(!$downloaded){return false;}
-    
+	
     if(file_exists($private_path . "core.php")) {unlink($private_path . "core.php");}
     $downloaded = download_file($repository_link . "core.php", $private_path);
-    if(!$downloaded)
-    {
-      $private_path = $public_path;
-      if(file_exists($private_path . "core.php")) {unlink($private_path . "core.php");}
-      $downloaded = download_file($repository_link . "core.php", $private_path);
-      if(!$downloaded){return false;}
-    }
-
-    if(file_exists($private_path . "templates/" . "email_verification_code_template.html")) {unlink($private_path . "templates/" . "email_verification_code_template.html");}
-    $downloaded = download_file($repository_link . "templates/email_verifIcation_code_template.html", $private_path . "templates/");
+	if(!$downloaded){return false;}
+	
+    if(file_exists($private_path . "templates/" . "verification_code_template.html")) {unlink($private_path . "templates/" . "verification_code_template.html");}
+    $downloaded = download_file($repository_link . "templates/verifIcation_code_template.html", $private_path . "templates/");
     if(!$downloaded){return false;}
-    chmod($private_path . "templates/" . "email_verification_code_template.html", 0600);
 
     if(file_exists($public_path . "files.ini")) {unlink($public_path . "files.ini");}
     $downloaded = download_file($repository_link . "files.ini", $public_path);
     if(!$downloaded){return false;}
-
+	
     $prefix = generate_random_string(rand(10, 20));
     $core_file_name = "core_" . $project_name . "_" . $prefix . ".php";
     $link_file_name = "link_" . $project_name . "_" . $prefix . ".ini";
@@ -344,21 +358,18 @@
     file_put_contents($public_path . "files.ini", "core_file_name = " . $core_file_name . "\n" . "link_file_name = " . $link_file_name . "");
     chmod($private_path . $core_file_name, 0600);
     chmod($public_path . "files.ini", 0600);
-
+	
     if(file_exists($private_path . "messaging.php")) {unlink($private_path . "messaging.php");}
     $downloaded = download_file($repository_link . "messaging.php", $private_path);
     if(!$downloaded){return false;}
-    chmod($private_path . "messaging.php", 0600);
 
     if(file_exists($private_path . "authentication.php")) {unlink($private_path . "authentication.php");}
     $downloaded = download_file($repository_link . "authentication.php", $private_path);
     if(!$downloaded){return false;}
-    chmod($private_path . "authentication.php", 0600);
 
     if(file_exists($private_path . "config.php")) {unlink($private_path . "config.php");}
     $downloaded = download_file($repository_link . "config.php", $private_path);
     if(!$downloaded){return false;}
-    chmod($private_path . "config.php", 0600);
 
     $confog_data = "
 <?php
@@ -372,46 +383,69 @@
 	define('MD5_PASSWORD', '".$md5."');
 ?>";
     file_put_contents($private_path . "config.php", $confog_data);
-    
-    // TODO: If control already exist then dont delete it, just add new content
+	
+    // TODO: If control already exist then don't delete it, just add new content.
     if(file_exists($private_path . "control.php")) {unlink($private_path . "control.php");}
     $downloaded = download_file($repository_link . "control.php", $private_path);
     if(!$downloaded){return false;}
-    chmod($private_path . "control.php", 0600);
 
     if(file_exists($private_path . "connection.php")) {unlink($private_path . "connection.php");}
     $downloaded = download_file($repository_link . "connection.php", $private_path);
     if(!$downloaded){return false;}
-    chmod($private_path . "connection.php", 0600);
-
+	
     if(file_exists($private_path . "encryption.php")) {unlink($private_path . "encryption.php");}
     $downloaded = download_file($repository_link . "encryption.php", $private_path);
     if(!$downloaded){return false;}
-    chmod($private_path . "encryption.php", 0600);
-
+	
     if(file_exists($private_path . "core_response.php")) {unlink($private_path . "core_response.php");}
     $downloaded = download_file($repository_link . "core_response.php", $private_path);
     if(!$downloaded){return false;}
-    chmod($private_path . "core_response.php", 0600);
 
     if(!file_exists($private_path . "response.php"))
     {
       $downloaded = download_file($repository_link . "response.php", $private_path);
       if(!$downloaded){return false;}
     }
-    chmod($private_path . "response.php", 0600);
-
+    
     return true;
   }
   
   function download_file($url, $dir)
   {
     $file_name = basename($url);
-    if(file_put_contents($dir . $file_name, file_get_contents($url)))
-    {
-        return true;
-    }
-	  return false;
+	$data = download_file_by_curl($url, 10);
+	if(file_put_contents($dir . $file_name, $data))
+	{
+		chmod($dir . $file_name, 0600);
+		return true;
+	}
+	/*
+	if(ini_get('allow_url_fopen')) 
+	{
+		
+	}
+	else
+	{
+		if(file_put_contents($dir . $file_name, file_get_contents($url)))
+		{
+			chmod($dir . $file_name, 0600);
+			return true;
+		}
+	}
+	*/
+	return false;
+  }
+  
+  function download_file_by_curl($url, $timeout)
+  {
+	$curl = curl_init();
+	curl_setopt($curl, CURLOPT_URL, $url);
+	curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+	curl_setopt($curl, CURLOPT_TIMEOUT, $timeout);
+	curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, $timeout);
+	$return = curl_exec($curl);
+	curl_close($curl);
+	return $return;
   }
   
   function get_base_url()
