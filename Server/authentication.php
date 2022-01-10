@@ -279,22 +279,23 @@
 							return $response;
 						}
 					}
-					if(file_exists($path . "/templates/email_verifIcation_code_template.html"))
+					if(file_exists($path . "/templates/verifIcation_code_template.html"))
 					{
 						$code = random_int(100000, 999999);
 						$company = COMPANY_NAME;
 						$company_email = COMPANY_EMAIL;
 						$logo = COMPANY_LOGO;
 						$time = EMAIL_VERIFICATION_CODE_EXPIRE_TIME;
-						$html =  file_get_contents($path . "/templates/email_verifIcation_code_template.html");
+						$html =  file_get_contents($path . "/templates/verifIcation_code_template.html");
 
 						$html = str_replace("[company_logo_url]", $logo, $html);
 						$html = str_replace("[company_name]", $company, $html);
-						$html = str_replace("[user_email_address]", $email, $html);
+						$html = str_replace("[user_name]", $email, $html);
 						$html = str_replace("[verification_code]", $code, $html);
 						$html = str_replace("[remained_minutes]", ceil($time / 60), $html);
-						$html = str_replace("[copyright_footer]", date("Y") . " " . $company, $html);
-
+						$html = str_replace("[copyright_footer]", "Copyright © " . date("Y") . " " . $company, $html);
+						$html = str_replace("[email_description]", "You can use this code to validate your email address. This code is confidential and you should not share it with anybody.", $html);
+						
 						if(send_email($company_email, $company, $email, "Email Verification Code", $html))
 						{
 							$query = "INSERT INTO verification_codes (code, type, account_id, expire_time) VALUES('$code', 1, $id, CURRENT_TIMESTAMP + INTERVAL $time SECOND)";
@@ -687,6 +688,116 @@
 		return $response;
 	}
 	
+	function send_password_recovery_code($connection, $email, $phone, $country, $response)
+	{
+		$response["error"] = "USER_NOT_EXISTS";
+		if($email != null)
+		{
+			$query = "SELECT id, username FROM accounts WHERE email = '$email' AND is_email_verified > 0";
+			$result = mysqli_query($connection, $query);
+			if($result && mysqli_num_rows($result) == 1)
+			{
+				$id = 0;
+				$username = "";
+				while($row = mysqli_fetch_assoc($result))
+				{
+					$username = $row["username"];
+					$id = $row["id"];
+				}
+				$query = "SELECT TIMESTAMPDIFF(SECOND, create_time, expire_time) AS remained FROM verification_codes WHERE account_id = $id AND type = 3 AND is_used = 0 AND expire_time > CURRENT_TIMESTAMP";
+				$result = mysqli_query($connection, $query);
+				if($result && mysqli_num_rows($result) > 0)
+				{
+					while($row = mysqli_fetch_assoc($result))
+					{
+						$response["error"] = "ALREADY_SENT";
+						$response["remained"] = $row["remained"];
+					}
+				}
+				else
+				{
+					if(file_exists($path . "/templates/verifIcation_code_template.html"))
+					{
+						$code = random_int(100000, 999999);
+						$company = COMPANY_NAME;
+						$company_email = COMPANY_EMAIL;
+						$logo = COMPANY_LOGO;
+						$time = PASSWORD_RECOVERY_EMAIL_CODE_EXPIRE_TIME;
+						$html =  file_get_contents($path . "/templates/verifIcation_code_template.html");
+						
+						$html = str_replace("[company_logo_url]", $logo, $html);
+						$html = str_replace("[company_name]", $company, $html);
+						$html = str_replace("[user_email_address]", $email, $html);
+						$html = str_replace("[verification_code]", $code, $html);
+						$html = str_replace("[remained_minutes]", ceil($time / 60), $html);
+						$html = str_replace("[copyright_footer]", "Copyright © " . date("Y") . " " . $company, $html);
+						$html = str_replace("[email_description]", "You can use this code to recover your account. This code is confidential and you should not share it with anybody.", $html);
+
+						if(send_email($company_email, $company, $email, "Password Recovery Code", $html))
+						{
+							$query = "INSERT INTO verification_codes (code, type, account_id, expire_time) VALUES('$code', 3, $id, CURRENT_TIMESTAMP + INTERVAL $time SECOND)";
+							mysqli_query($connection, $query);
+							$response["successful"] = true;
+							$response["remained"] = $time;
+						}
+						else
+						{
+							$response["error"] = "ERROR_SEND_EMAIL";
+						}
+					}
+					else
+					{
+						$response["error"] = "NO_TEMPLATE";
+					}
+				}
+			}
+		}
+		else if($phone != null && $country != null)
+		{
+			$query = "SELECT id, username FROM accounts WHERE phone_number = '$phone' AND phone_country = '$country' AND is_phone_verified > 0";
+			$result = mysqli_query($connection, $query);
+			if($result && mysqli_num_rows($result) == 1)
+			{
+				$id = 0;
+				$username = "";
+				while($row = mysqli_fetch_assoc($result))
+				{
+					$username = $row["username"];
+					$id = $row["id"];
+				}
+				$query = "SELECT TIMESTAMPDIFF(SECOND, create_time, expire_time) AS remained FROM verification_codes WHERE account_id = $id AND type = 4 AND is_used = 0 AND expire_time > CURRENT_TIMESTAMP";
+				$result = mysqli_query($connection, $query);
+				if($result && mysqli_num_rows($result) > 0)
+				{
+					while($row = mysqli_fetch_assoc($result))
+					{
+						$response["error"] = "ALREADY_SENT";
+						$response["remained"] = $row["remained"];
+					}
+				}
+				else
+				{
+					$code = random_int(100000, 999999);
+					$company = COMPANY_NAME;
+					$time = PASSWORD_RECOVERY_PHONE_CODE_EXPIRE_TIME;
+					$text = $code . " is your " . $company . " password recovery code. It will expires in " . ceil($time / 60) . " minutes.";
+					if(send_sms($phone, $text))
+					{
+						$query = "INSERT INTO verification_codes (code, type, account_id, expire_time) VALUES('$code', 4, $id, CURRENT_TIMESTAMP + INTERVAL $time SECOND)";
+						mysqli_query($connection, $query);
+						$response["successful"] = true;
+						$response["remained"] = $time;
+					}
+					else
+					{
+						$response["error"] = "ERROR_SEND_SMS";
+					}
+				}
+			}
+		}
+		return $response;
+	}
+
 	function change_email($connection, $path, $username, $password, $session, $version, $email, $response)
 	{
 		$auth = authenticate($connection, $path, $username, $password, $session, false, $version, false);
