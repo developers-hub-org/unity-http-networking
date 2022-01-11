@@ -673,14 +673,7 @@
 		}
 		if($successful)
 		{
-			if($username != null)
-			{
-				$query = "UPDATE accounts SET password = '$new_password', is_password_set = 1 WHERE username = '$username'";
-			}
-			else
-			{
-				$query = "UPDATE accounts SET password = '$new_password', is_password_set = 1 WHERE id = $id";
-			}
+			$query = "UPDATE accounts SET password = '$new_password', is_password_set = 1 WHERE id = $id";
 			mysqli_query($connection, $query);
 			$response["successful"] = true;
 			$response["new_password"] = $new_password;
@@ -688,7 +681,7 @@
 		return $response;
 	}
 	
-	function send_password_recovery_code($connection, $email, $phone, $country, $response)
+	function send_password_recovery_code($connection, $path, $email, $phone, $country, $response)
 	{
 		$response["error"] = "USER_NOT_EXISTS";
 		if($email != null)
