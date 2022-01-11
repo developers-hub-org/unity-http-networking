@@ -207,7 +207,7 @@
 				break;
 			case 987711: // SEND_PASSWORD_RECOVERY_CODE
 				include_once ($path . "/authentication.php");
-				$response = send_password_recovery_code($connection, isset($json->email) ? $json->email : null, isset($json->phone) ? $json->phone : null, isset($json->country) ? $json->country : null, $response);
+				$response = send_password_recovery_code($connection, $path, isset($json->email) ? $json->email : null, isset($json->phone) ? $json->phone : null, isset($json->country) ? $json->country : null, $response);
 				break;
 		}
 		return $response;
