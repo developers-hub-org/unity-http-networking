@@ -647,7 +647,7 @@
 		}
 		else if ($password != null && $session != null && $username != null)
 		{
-			$auth = authenticate($connection, $path, $username, $password, $session, false, $version, false);
+			$auth = authenticate($connection, $path, $username, $password, $session, false, $version, false, false, null, null, null, null, null, null);
 			if($auth["valid"] == true)
 			{
 				$id = $auth["account_id"];
@@ -720,7 +720,7 @@
 						
 						$html = str_replace("[company_logo_url]", $logo, $html);
 						$html = str_replace("[company_name]", $company, $html);
-						$html = str_replace("[user_email_address]", $email, $html);
+						$html = str_replace("[user_name]", $username, $html);
 						$html = str_replace("[verification_code]", $code, $html);
 						$html = str_replace("[remained_minutes]", ceil($time / 60), $html);
 						$html = str_replace("[copyright_footer]", "Copyright © " . date("Y") . " " . $company, $html);
@@ -773,7 +773,7 @@
 					$code = random_int(100000, 999999);
 					$company = COMPANY_NAME;
 					$time = PASSWORD_RECOVERY_PHONE_CODE_EXPIRE_TIME;
-					$text = $code . " is your " . $company . " password recovery code. It will expires in " . ceil($time / 60) . " minutes.";
+					$text = $code . " is your " . $company . " account password recovery code.  Your username is " . $username . " and this code will expire in " . ceil($time / 60) . " minutes.";
 					if(send_sms($phone, $text))
 					{
 						$query = "INSERT INTO verification_codes (code, type, account_id, expire_time) VALUES('$code', 4, $id, CURRENT_TIMESTAMP + INTERVAL $time SECOND)";
@@ -793,7 +793,7 @@
 
 	function change_email($connection, $path, $username, $password, $session, $version, $email, $response)
 	{
-		$auth = authenticate($connection, $path, $username, $password, $session, false, $version, false);
+		$auth = authenticate($connection, $path, $username, $password, $session, false, $version, false, false, null, null, null, null, null, null);
 		if($auth["valid"] == true)
 		{
 			$id = $auth["account_id"];
@@ -821,7 +821,7 @@
 	
 	function change_phone($connection, $path, $username, $password, $session, $version, $phone, $country, $response)
 	{
-		$auth = authenticate($connection, $path, $username, $password, $session, false, $version, false);
+		$auth = authenticate($connection, $path, $username, $password, $session, false, $version, false, false, null, null, null, null, null, null);
 		if($auth["valid"] == true)
 		{
 			$id = $auth["account_id"];
@@ -847,7 +847,7 @@
 		return $response;
 	}
 	
-	function authenticate($connection, $path, $username, $password, $session, $register, $version, $create_session_if_not_exists)
+	function authenticate($connection, $path, $username, $password, $session, $register, $version, $create_session_if_not_exists, $only_register, $email, $phone, $country, $firstname, $lastname, $birthday)
 	{
 		include_once ($path . "/control.php");
 		$response = array();
@@ -859,94 +859,101 @@
 		$result = mysqli_query($connection, $query);
 		if($result && mysqli_num_rows($result) == 1)
 		{
-			$pass = "";
-			$blocked = 1;
-			$account_id = 0;
-			while($row = mysqli_fetch_assoc($result))
+			if($only_register)
 			{
-				$pass = $row['password'];
-				$blocked = $row['blocked'];
-				$account_id = $row['id'];
-			}
-			$response["account_id"] = $account_id;
-			if($password == $pass)
-			{
-				// Check if the account has been suspended
-				if($blocked > 0)
-				{
-					$response["error"] = "BLOCKED";
-				}
-				else
-				{
-					if($create_session_if_not_exists)
-					{
-						// Check if there is other devices are online using this account
-						$ip = get_user_ip();
-						if(ALLOW_MULTIPLE_ONLINE_SESSIONS == false)
-						{
-							$period = CONNECTION_CHECK_PERIOD + 5;
-							$query = "SELECT id FROM sessions WHERE account_id = $account_id AND ip <> '$ip' AND activity >= CURRENT_TIMESTAMP - INTERVAL $period SECOND";
-							$result = mysqli_query($connection, $query);
-							if($result && mysqli_num_rows($result) > 0)
-							{
-								$response["error"] = "ANOTHER_SESSION_IS_ONLINE";
-								return $response;
-							}
-						}
-						
-						// If there is a session for this ip then use it otherwise create a new session
-						$query = "SELECT id FROM sessions WHERE account_id = $account_id AND ip = '$ip'";
-						$result = mysqli_query($connection, $query);
-						if($result && mysqli_num_rows($result) > 0)
-						{
-							// Use an existing session
-							$session_id = 0;
-							while($row = mysqli_fetch_assoc($result))
-							{
-								$session_id = $row['id'];
-							}
-							$response["session_id"] = $session_id;
-							$query = "UPDATE sessions SET username = '$username', session = '$session', version = '$version' WHERE id = $session_id";
-							mysqli_query($connection, $query);
-						}
-						else
-						{
-							// Create a new session
-							$query = "INSERT INTO sessions (account_id, username, session, ip, version) VALUES($account_id , '$username', '$session', '$ip', '$version')";
-							mysqli_query($connection, $query);
-							$session_id = mysqli_insert_id($connection);
-							$response["session_id"] = $session_id;
-						}
-						$response["valid"] = true;
-					}
-					else
-					{
-						// Check if there is a session for this user
-						$ip = get_user_ip();
-						$query = "SELECT id FROM sessions WHERE account_id = $account_id AND ip = '$ip' AND session = '$session'";
-						$result = mysqli_query($connection, $query);
-						if($result && mysqli_num_rows($result) > 0)
-						{
-							$id = 0;
-							while($row = mysqli_fetch_assoc($result))
-							{
-								$id = $row['id'];
-							}
-							$query = "UPDATE sessions SET activity = CURRENT_TIMESTAMP WHERE id = $id";
-							mysqli_query($connection, $query);
-							$response["valid"] = true;
-							$response["session_id"] = $id;
-						}
-						else
-						{
-							$response["error"] = "WRONG_SESSION";
-						}
-					}
-				}
+				$response["error"] = "USERNAME_TAKEN";
 			}
 			else
 			{
-				$response["error"] = "WRONG_CREDENTIALS";
+				$pass = "";
+				$blocked = 1;
+				$account_id = 0;
+				while($row = mysqli_fetch_assoc($result))
+				{
+					$pass = $row['password'];
+					$blocked = $row['blocked'];
+					$account_id = $row['id'];
+				}
+				$response["account_id"] = $account_id;
+				if($password == $pass)
+				{
+					// Check if the account has been suspended
+					if($blocked > 0)
+					{
+						$response["error"] = "BLOCKED";
+					}
+					else
+					{
+						if($create_session_if_not_exists)
+						{
+							// Check if there is other devices are online using this account
+							$ip = get_user_ip();
+							if(ALLOW_MULTIPLE_ONLINE_SESSIONS == false)
+							{
+								$period = CONNECTION_CHECK_PERIOD + 5;
+								$query = "SELECT id FROM sessions WHERE account_id = $account_id AND ip <> '$ip' AND activity >= CURRENT_TIMESTAMP - INTERVAL $period SECOND";
+								$result = mysqli_query($connection, $query);
+								if($result && mysqli_num_rows($result) > 0)
+								{
+									$response["error"] = "ANOTHER_SESSION_IS_ONLINE";
+									return $response;
+								}
+							}
+							
+							// If there is a session for this ip then use it otherwise create a new session
+							$query = "SELECT id FROM sessions WHERE account_id = $account_id AND ip = '$ip'";
+							$result = mysqli_query($connection, $query);
+							if($result && mysqli_num_rows($result) > 0)
+							{
+								// Use an existing session
+								$session_id = 0;
+								while($row = mysqli_fetch_assoc($result))
+								{
+									$session_id = $row['id'];
+								}
+								$response["session_id"] = $session_id;
+								$query = "UPDATE sessions SET username = '$username', session = '$session', version = '$version' WHERE id = $session_id";
+								mysqli_query($connection, $query);
+							}
+							else
+							{
+								// Create a new session
+								$query = "INSERT INTO sessions (account_id, username, session, ip, version) VALUES($account_id , '$username', '$session', '$ip', '$version')";
+								mysqli_query($connection, $query);
+								$session_id = mysqli_insert_id($connection);
+								$response["session_id"] = $session_id;
+							}
+							$response["valid"] = true;
+						}
+						else
+						{
+							// Check if there is a session for this user
+							$ip = get_user_ip();
+							$query = "SELECT id FROM sessions WHERE account_id = $account_id AND ip = '$ip' AND session = '$session'";
+							$result = mysqli_query($connection, $query);
+							if($result && mysqli_num_rows($result) > 0)
+							{
+								$id = 0;
+								while($row = mysqli_fetch_assoc($result))
+								{
+									$id = $row['id'];
+								}
+								$query = "UPDATE sessions SET activity = CURRENT_TIMESTAMP WHERE id = $id";
+								mysqli_query($connection, $query);
+								$response["valid"] = true;
+								$response["session_id"] = $id;
+							}
+							else
+							{
+								$response["error"] = "WRONG_SESSION";
+							}
+						}
+					}
+				}
+				else
+				{
+					$response["error"] = "WRONG_CREDENTIALS";
+				}
 			}
 		}
 		else if($result && mysqli_num_rows($result) == 0)
@@ -989,10 +996,42 @@
 				}
 
 				// Create a new account
+				$query_keys = "";
+				$query_values = "";
+				if($email != null)
+				{
+					$query_keys = $query_keys . ", email";
+					$query_values = $query_values . ", '$email'";
+				}
+				if($phone != null)
+				{
+					$query_keys = $query_keys . ", phone_number";
+					$query_values = $query_values . ", '$phone'";
+				}
+				if($country != null)
+				{
+					$query_keys = $query_keys . ", phone_country";
+					$query_values = $query_values . ", '$country'";
+				}
+				if($firstname != null)
+				{
+					$query_keys = $query_keys . ", firstname";
+					$query_values = $query_values . ", '$firstname'";
+				}
+				if($lastname != null)
+				{
+					$query_keys = $query_keys . ", lastname";
+					$query_values = $query_values . ", '$lastname'";
+				}
+				if($birthday != null && is_datetime_valid($birthday))
+				{
+					$query_keys = $query_keys . ", birthday";
+					$query_values = $query_values . ", '$birthday'";
+				}
 				$query = "INSERT INTO accounts(username, password) VALUES('$username','$password')";
 				$result = mysqli_query($connection, $query);
 				$account_id = mysqli_insert_id($connection);
-				$query = "INSERT INTO sessions (account_id, username, session, ip, version) VALUES($account_id, '$username', '$session', '$ip', '$version')";
+				$query = "INSERT INTO sessions (account_id, username, session, ip, version $query_keys) VALUES($account_id, '$username', '$session', '$ip', '$version' $query_values)";
 				mysqli_query($connection, $query);
 				$session_id = mysqli_insert_id($connection);
 				$response["session_id"] = $session_id;
