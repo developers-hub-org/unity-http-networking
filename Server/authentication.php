@@ -6,6 +6,9 @@
 		2: Phone Verification
 		3: Change Password With Email
 		4: Change Password With Phone
+
+		Note: Need online host to send email. Localhost can not send email.
+		Note: Need sms service API to send text message.
 	*/
 
 	function get_user_data_by_id($connection, $path, $id, $block_check_id)
@@ -23,7 +26,8 @@
 		$query = "";
 		if($username != null)
 		{
-			$query = "SELECT * FROM accounts WHERE username = '$username'";
+			$lower_username = strtolower($username);
+			$query = "SELECT * FROM accounts WHERE LOWER(username) = '$lower_username'";
 		}
 		else if($id != null)
 		{
@@ -855,7 +859,8 @@
 		$response["error"] = "";
 		$response["session_id"] = 0;
 		$response["account_id"] = 0;
-		$query = "SELECT id, password, blocked FROM accounts WHERE username = '$username'";
+		$lower_username = strtolower($username);
+		$query = "SELECT id, password, blocked FROM accounts WHERE LOWER(username) = '$lower_username'";
 		$result = mysqli_query($connection, $query);
 		if($result && mysqli_num_rows($result) == 1)
 		{
@@ -1025,13 +1030,18 @@
 				}
 				if($birthday != null && is_datetime_valid($birthday))
 				{
-					$query_keys = $query_keys . ", birthday";
-					$query_values = $query_values . ", '$birthday'";
+					$query_keys = $query_keys . ", birthday, is_birthday_set";
+					$query_values = $query_values . ", '$birthday', 1";
 				}
-				$query = "INSERT INTO accounts(username, password) VALUES('$username','$password')";
+				if($only_register)
+				{
+					$query_keys = $query_keys . ", is_password_set";
+					$query_values = $query_values . ", 1";
+				}
+				$query = "INSERT INTO accounts(username, password" . (strlen($query_keys) > 0 ? " " . $query_keys : "") . ") VALUES('$username','$password'" . (strlen($query_values) > 0 ? " " . $query_values : "") . ")";
 				$result = mysqli_query($connection, $query);
 				$account_id = mysqli_insert_id($connection);
-				$query = "INSERT INTO sessions (account_id, username, session, ip, version $query_keys) VALUES($account_id, '$username', '$session', '$ip', '$version' $query_values)";
+				$query = "INSERT INTO sessions (account_id, username, session, ip, version) VALUES($account_id, '$username', '$session', '$ip', '$version')";
 				mysqli_query($connection, $query);
 				$session_id = mysqli_insert_id($connection);
 				$response["session_id"] = $session_id;
