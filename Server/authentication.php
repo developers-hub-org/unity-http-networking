@@ -688,6 +688,7 @@
 	function send_password_recovery_code($connection, $path, $email, $phone, $country, $response)
 	{
 		$response["error"] = "USER_NOT_EXISTS";
+		$response["successful"] = false;
 		if($email != null)
 		{
 			$query = "SELECT id, username FROM accounts WHERE email = '$email' AND is_email_verified > 0";
