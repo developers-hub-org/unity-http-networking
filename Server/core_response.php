@@ -151,31 +151,7 @@
 				break;
 			case 987703: // GET_USERS_DATA_PER_PAGE
 				include_once ($path . "/authentication.php");
-				$your_id = -1;
-				if(isset($json->your_id))
-				{
-					$your_id = $json->your_id;
-				}
-				$users = get_ser_data_per_page($connection, $path, $json->users_page, $json->users_per_page, $json->users_sort, $json->users_desc_asc, $your_id);
-				if($users != null)
-				{
-					$response["users"] = $users;
-					$response["successful"] = true;
-					$result = mysqli_query($connection, "SELECT COUNT(id) AS count FROM accounts");
-					$count = 0;
-					if($result && mysqli_num_rows($result) > 0)
-					{
-						while($row = mysqli_fetch_assoc($result))
-						{
-							$count = $row['count'];
-						}
-					}
-					$response["total_users_count"] = $count;
-				}
-				else
-				{
-					$response["error"] = "NO_USER";
-				}
+				$response = get_ser_data_per_page($connection, $path, $json->users_page, $json->users_per_page, $json->users_sort, $json->users_desc_asc, isset($json->your_id) ? $json->your_id : -1, $response);
 				break;
 			case 987704: // CHANGE_PASSWORD
 				include_once ($path . "/authentication.php");
