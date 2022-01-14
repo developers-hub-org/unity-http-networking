@@ -74,8 +74,9 @@
 		return null;
 	}
 	
-	function get_ser_data_per_page($connection, $path, $page, $per_page, $sort, $desc_asc, $block_check_id)
+	function get_ser_data_per_page($connection, $path, $page, $per_page, $sort, $desc_asc, $block_check_id, $response)
 	{
+		$response["error"] = "NO_USER";
 		include_once ($path . "/control.php");
 		if($page <= 0)
 		{
@@ -120,7 +121,7 @@
 		$query = "SET @row_number = 0; SELECT * FROM (SELECT (@row_number:=@row_number + 1) AS rank " . $column_query . " FROM accounts" . $sort_query . ") as users LIMIT " . (($page - 1) * $per_page) . ", " . $per_page;
 		if (mysqli_multi_query($connection, $query)) 
 		{
-			$response = array();
+			$users = array();
 			$id_list = array();
 			while(true)
 			{
@@ -130,7 +131,7 @@
 					{
 						$id_list[] = $row['id'];
 						unset($row["password"]);
-						array_push($response, $row);
+						array_push($users, $row);
 					}
 					mysqli_free_result($result);
 				}
@@ -143,7 +144,7 @@
 					break;
 				}
 			}
-			if(count($response) > 0)
+			if(count($users) > 0)
 			{
 				$id_array = implode(',', $id_list);
 				$period = CONNECTION_CHECK_PERIOD + 5;
@@ -152,16 +153,16 @@
 				$result = mysqli_query($connection, $query);
 				if($result && mysqli_num_rows($result) > 0)
 				{				
-					usort($response, 'compare_array_id');
+					usort($users, 'compare_array_id');
 					$sorted = true;
 					$j = 0;
 					while($row = mysqli_fetch_assoc($result))
 					{	
-						for ($i = $j; $i < count($response); $i++)
+						for ($i = $j; $i < count($users); $i++)
 						{
-							if ($response[$i]['id'] === $row["account_id"]) 
+							if ($users[$i]['id'] === $row["account_id"]) 
 							{
-								$response[$i]["is_online"] = 1;
+								$users[$i]["is_online"] = 1;
 								$j = $i + 1;
 								break;
 							}
@@ -176,17 +177,17 @@
 					{				
 						if($sorted == false)
 						{
-							usort($response, 'compare_array_id');
+							usort($users, 'compare_array_id');
 							$sorted = true;
 						}
 						$j = 0;
 						while($row = mysqli_fetch_assoc($result))
 						{	
-							for ($i = $j; $i < count($response); $i++)
+							for ($i = $j; $i < count($users); $i++)
 							{
-								if ($response[$i]['id'] === $row["blocked_id"]) 
+								if ($users[$i]['id'] === $row["blocked_id"]) 
 								{
-									$response[$i]["blocked_by_you"] = 1;
+									$users[$i]["blocked_by_you"] = 1;
 									$j = $i + 1;
 									break;
 								}
@@ -199,17 +200,17 @@
 					{				
 						if($sorted == false)
 						{
-							usort($response, 'compare_array_id');
+							usort($users, 'compare_array_id');
 							$sorted = true;
 						}
 						$j = 0;
 						while($row = mysqli_fetch_assoc($result))
 						{	
-							for ($i = $j; $i < count($response); $i++)
+							for ($i = $j; $i < count($users); $i++)
 							{
-								if ($response[$i]['id'] === $row["blocker_id"]) 
+								if ($users[$i]['id'] === $row["blocker_id"]) 
 								{
-									$response[$i]["blocked_you"] = 1;
+									$users[$i]["blocked_you"] = 1;
 									$j = $i + 1;
 									break;
 								}
@@ -217,10 +218,24 @@
 						}
 					}
 				}
-				return $response;
+				$response["successful"] = true;
+				$response["users"] = $users;
+				$response["error"] = "";
+				$result = mysqli_query($connection, "SELECT COUNT(id) AS count FROM accounts");
+				$count = 0;
+				if($result && mysqli_num_rows($result) > 0)
+				{
+					while($row = mysqli_fetch_assoc($result))
+					{
+						$count = $row['count'];
+					}
+				}
+				$response["total_users_count"] = $count;
+				$response["per_page_count"] = $per_page;
+				$response["current_page"] = $page;
 			}
 		}
-		return null;
+		return $response;
 	}
 	
 	function send_email_verification_code($connection, $username, $id, $path, $response)
