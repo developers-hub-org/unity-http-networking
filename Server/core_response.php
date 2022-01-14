@@ -32,7 +32,7 @@
 						{
 							case 987701: // UPDATE_USER_ACTIVITY
 								include_once ($path . "/authentication.php");
-								$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false);
+								$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false, false, null, null, null, null, null, null);
 								if($auth["valid"] == true)
 								{
 									$task = array();
@@ -49,7 +49,7 @@
 								break;
 							case 987750: // GET_UNREAD_MESSAGES_COUNT
 								include_once ($path . "/authentication.php");
-								$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false);
+								$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false, false, null, null, null, null, null, null);
 								if($auth["valid"] == true)
 								{
 									include_once ($path . "/messaging.php");
@@ -65,7 +65,7 @@
 								break;
 							case 987751: // GET_UNDELIVERED_MESSAGES
 								include_once ($path . "/authentication.php");
-								$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false);
+								$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false, false, null, null, null, null, null, null);
 								if($auth["valid"] == true)
 								{
 									include_once ($path . "/messaging.php");
@@ -97,17 +97,7 @@
 				break;
 			case 987700: // AUTHENTICATE_USER
 				include_once ($path . "/authentication.php");
-				$create_session_if_not_exists = false;
-				$register = false;
-				if(isset($json->create_session))
-				{
-					$create_session_if_not_exists = $json->create_session;
-				}
-				if(isset($json->register_user))
-				{
-					$register = $json->register_user;
-				}
-				$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, $register, $json->version, $create_session_if_not_exists);
+				$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, isset($json->register_user) ? $json->register_user : false, $json->version, isset($json->create_session) ? $json->create_session : false, isset($json->only_register) ? $json->only_register : false, isset($json->email) ? $json->email : null, isset($json->phone_number) ? $json->phone_number : null, isset($json->phone_country) ? $json->phone_country : null, isset($json->firstname) ? $json->firstname : null, isset($json->lastname) ? $json->lastname : null, isset($json->birthday) ? $json->birthday : null);
 				if($auth["valid"] == true)
 				{
 					$response["successful"] = true;
