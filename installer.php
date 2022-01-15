@@ -317,7 +317,7 @@
       mkdir($private_path . "templates", 0777, true);
     }
 	
-    $repository_link = "https://raw.githubusercontent.com/developers-hub-org/unity-http-networking/main/Server/";
+    $repository_link = "https://raw.githubusercontent.com/developers-hub-org/unity-http-networking/main/src/";
 	/*
 	$files_to_download = array(
 		$repository_link . "api.php" => $public_path . "api.php",
@@ -326,7 +326,7 @@
 		$repository_link . "authentication.php" => $private_path . "authentication.php",
 		$repository_link . "messaging.php" => $private_path . "messaging.php",
 		$repository_link . "config.php" => $private_path . "config.php",
-		$repository_link . "core_response.php" => $private_path . "core_response.php",
+		$repository_link . "extentions.php" => $private_path . "extentions.php",
 		$repository_link . "encryption.php" => $private_path . "encryption.php",
 		$repository_link . "connection.php" => $private_path . "connection.php",
 		$repository_link . "control.php" => $private_path . "control.php",
@@ -397,8 +397,8 @@
     $downloaded = download_file($repository_link . "encryption.php", $private_path);
     if(!$downloaded){return false;}
 	
-    if(file_exists($private_path . "core_response.php")) {unlink($private_path . "core_response.php");}
-    $downloaded = download_file($repository_link . "core_response.php", $private_path);
+    if(file_exists($private_path . "extentions.php")) {unlink($private_path . "extentions.php");}
+    $downloaded = download_file($repository_link . "extentions.php", $private_path);
     if(!$downloaded){return false;}
 
     if(!file_exists($private_path . "response.php"))
