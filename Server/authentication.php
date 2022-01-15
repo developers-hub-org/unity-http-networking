@@ -811,6 +811,29 @@
 		return $response;
 	}
 
+	function change_username($connection, $path, $username, $password, $session, $version, $new_username, $response)
+	{
+		$auth = authenticate($connection, $path, $username, $password, $session, false, $version, false, false, null, null, null, null, null, null);
+		if($auth["valid"] == true)
+		{
+			$query = "SELECT id FROM accounts WHERE LOWER(username) = '$new_username'";
+			$result = mysqli_query($connection, $query);
+			if($result && mysqli_num_rows($result) > 0)
+			{
+				$response["error"] = "USERNAME_TAKEN";
+			}
+			else
+			{
+				$id = $auth["account_id"];
+				$query = "UPDATE accounts SET username = '$new_username' WHERE id = $id; UPDATE sessions SET username = '$new_username' WHERE account_id = $id AND LOWER(username) = '$username';";
+				mysqli_multi_query($connection, $query);
+				$response["username"] = $new_username;
+				$response["successful"] = true;
+			}
+		}
+		return $response;
+	}
+
 	function change_email($connection, $path, $username, $password, $session, $version, $email, $response)
 	{
 		$auth = authenticate($connection, $path, $username, $password, $session, false, $version, false, false, null, null, null, null, null, null);
