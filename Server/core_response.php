@@ -111,19 +111,14 @@
 				break;
 			case 987702: // GET_USER_DATA
 				include_once ($path . "/authentication.php");
-				$your_id = -1;
-				if(isset($json->your_id))
-				{
-					$your_id = $json->your_id;
-				}
 				$user = null;
 				if(isset($json->get_username))
 				{
-					$user = get_user_data_by_username($connection, $path, $json->get_username, $your_id);
+					$user = get_user_data_by_username($connection, $path, $json->get_username, isset($json->your_id) ? $json->your_id : -1);
 				}
 				else if(isset($json->get_id))
 				{
-					$user = get_user_data_by_id($connection, $path, $json->get_id, $your_id);
+					$user = get_user_data_by_id($connection, $path, $json->get_id, isset($json->your_id) ? $json->your_id : -1);
 				}
 				else
 				{
@@ -174,6 +169,10 @@
 			case 987711: // SEND_PASSWORD_RECOVERY_CODE
 				include_once ($path . "/authentication.php");
 				$response = send_password_recovery_code($connection, $path, isset($json->email) ? $json->email : null, isset($json->phone) ? $json->phone : null, isset($json->country) ? $json->country : null, $response);
+				break;
+			case 987712: // CHANGE_USERNAME
+				include_once ($path . "/authentication.php");
+				$response = change_username($connection, $path, $json->username, $json->password, $json->session, $json->version, $json->email,  $json->new_username, $response);
 				break;
 		}
 		return $response;
