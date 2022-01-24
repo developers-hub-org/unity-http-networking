@@ -24,6 +24,8 @@
 			case 987651: // Sync Connection
 				if(isset($json->extentions_requests))
 				{
+					include_once ($path . "/authentication.php");
+					$auth = authenticate($connection, $path, isset($json->username) ? $json->username : null, isset($json->password) ? $json->password : null, isset($json->session) ? $json->session : null, false, isset($json->version) ? $json->version : null, false, false, null, null, null, null, null, null);
 					$requests_response = array();
 					foreach($json->extentions_requests as $key => $value) 
 					{
@@ -31,15 +33,13 @@
 						switch($value)
 						{
 							case 987701: // UPDATE_USER_ACTIVITY
-								include_once ($path . "/authentication.php");
-								$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false, false, null, null, null, null, null, null);
 								if($auth["valid"] == true)
 								{
 									$task = array();
 									$id = $auth["session_id"];
 									$query = "UPDATE sessions SET activity = CURRENT_TIMESTAMP WHERE id = $id";
 									mysqli_query($connection, $query);
-									// $task["successful"] = true;
+									// $task["key_of_the_data_you_need"] = value_of_the_data_you_need;
 									$requests_response["987701"] = $task;
 								}
 								else
@@ -48,15 +48,10 @@
 								}
 								break;
 							case 987750: // GET_UNREAD_MESSAGES_COUNT
-								include_once ($path . "/authentication.php");
-								$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false, false, null, null, null, null, null, null);
 								if($auth["valid"] == true)
 								{
 									include_once ($path . "/messaging.php");
-									$task = array();
-									$task["unread_messages"] = get_unread_messages_count($connection, $auth["account_id"]);
-									// $task["successful"] = true;
-									$requests_response["987750"] = $task;
+									$requests_response["987750"] = get_unread_messages_count($connection, $auth["account_id"]);
 								}
 								else
 								{
@@ -64,8 +59,6 @@
 								}
 								break;
 							case 987751: // GET_UNDELIVERED_MESSAGES
-								include_once ($path . "/authentication.php");
-								$auth = authenticate($connection, $path, $json->username, $json->password, $json->session, false, $json->version, false, false, null, null, null, null, null, null);
 								if($auth["valid"] == true)
 								{
 									include_once ($path . "/messaging.php");
