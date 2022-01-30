@@ -29,6 +29,7 @@
             "ALTER TABLE accounts ADD COLUMN username VARCHAR(255)",
             "ALTER TABLE accounts ADD COLUMN password VARCHAR(255)",
 			      "ALTER TABLE accounts ADD COLUMN firstname VARCHAR(255) DEFAULT ''",
+            "ALTER TABLE accounts ADD COLUMN middlename VARCHAR(255) DEFAULT ''",
             "ALTER TABLE accounts ADD COLUMN lastname VARCHAR(255) DEFAULT ''",
             "ALTER TABLE accounts ADD COLUMN is_password_set TINYINT(1) DEFAULT 0",
             "ALTER TABLE accounts ADD COLUMN email VARCHAR(255) DEFAULT ''",
@@ -49,7 +50,7 @@
         }
         else
         {
-          $query = "CREATE TABLE IF NOT EXISTS accounts(id INT(11) AUTO_INCREMENT, is_verified TINYINT(1) DEFAULT 0, username VARCHAR(255), password VARCHAR(255), firstname VARCHAR(255) DEFAULT '', lastname VARCHAR(255) DEFAULT '', is_password_set TINYINT(1) DEFAULT 0, email VARCHAR(255) DEFAULT '', is_email_verified TINYINT(1) DEFAULT 0, phone_number VARCHAR(255) DEFAULT '', phone_country VARCHAR(255) DEFAULT 'us', is_phone_verified TINYINT(1) DEFAULT 0, picture_url VARCHAR(1000) DEFAULT '', score INT(11) DEFAULT 0, blocked TINYINT(1) DEFAULT 0, is_birthday_set TINYINT(1) DEFAULT 0, birthday DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id))";
+          $query = "CREATE TABLE IF NOT EXISTS accounts(id INT(11) AUTO_INCREMENT, is_verified TINYINT(1) DEFAULT 0, username VARCHAR(255), password VARCHAR(255), firstname VARCHAR(255) DEFAULT '', middlename VARCHAR(255) DEFAULT '', lastname VARCHAR(255) DEFAULT '', is_password_set TINYINT(1) DEFAULT 0, email VARCHAR(255) DEFAULT '', is_email_verified TINYINT(1) DEFAULT 0, phone_number VARCHAR(255) DEFAULT '', phone_country VARCHAR(255) DEFAULT 'us', is_phone_verified TINYINT(1) DEFAULT 0, picture_url VARCHAR(1000) DEFAULT '', score INT(11) DEFAULT 0, blocked TINYINT(1) DEFAULT 0, is_birthday_set TINYINT(1) DEFAULT 0, birthday DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id))";
           mysqli_query($connection, $query);
         }
         $sessions_table = mysqli_query($connection, "SELECT 1 from sessions LIMIT 1");
@@ -104,12 +105,16 @@
           "ALTER TABLE messages ADD COLUMN group_id INT(11) NULL",
           "ALTER TABLE messages ADD COLUMN encryption_key VARCHAR(50)",
           "ALTER TABLE messages ADD COLUMN message_text VARCHAR(10000)",
-          "ALTER TABLE messages ADD COLUMN is_file TINYINT(1) DEFAULT 0",
+          "ALTER TABLE messages ADD COLUMN is_forwarded TINYINT(1) DEFAULT 0",
+          "ALTER TABLE messages ADD COLUMN forwarded_from_id INT(11) NULL",
+          "ALTER TABLE messages ADD COLUMN have_attachment TINYINT(1) DEFAULT 0",
+          "ALTER TABLE messages ADD COLUMN attachment_url VARCHAR(10000) DEFAULT ''",
           "ALTER TABLE messages ADD COLUMN downloaded TINYINT(1) DEFAULT 0",
           "ALTER TABLE messages ADD COLUMN sender_delete TINYINT(1) DEFAULT 0",
           "ALTER TABLE messages ADD COLUMN receiver_delete TINYINT(1) DEFAULT 0",
           "ALTER TABLE messages ADD COLUMN send_time DATETIME DEFAULT CURRENT_TIMESTAMP",
           "ALTER TABLE messages ADD FOREIGN KEY (sender_id) REFERENCES accounts(id)",
+          "ALTER TABLE messages ADD FOREIGN KEY (forwarded_from_id) REFERENCES accounts(id)",
           "ALTER TABLE messages ADD FOREIGN KEY (group_id) REFERENCES chat_groups(id)",
           "ALTER TABLE messages ADD FOREIGN KEY (receiver_id) REFERENCES accounts(id)"
           );
@@ -120,7 +125,7 @@
         }
         else
         {
-          $query = "CREATE TABLE IF NOT EXISTS messages(id INT(11) AUTO_INCREMENT, sender_id INT(11), receiver_id INT(11) NULL, group_id INT(11) NULL, encryption_key VARCHAR(50) NOT NULL, message_text VARCHAR(10000) NOT NULL, is_file TINYINT(1) DEFAULT 0, downloaded TINYINT(1) DEFAULT 0, sender_delete TINYINT(1) DEFAULT 0, receiver_delete TINYINT(1) DEFAULT 0, send_time DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), FOREIGN KEY (sender_id) REFERENCES accounts(id), FOREIGN KEY (receiver_id) REFERENCES accounts(id), FOREIGN KEY (group_id) REFERENCES chat_groups(id))";
+          $query = "CREATE TABLE IF NOT EXISTS messages(id INT(11) AUTO_INCREMENT, sender_id INT(11), receiver_id INT(11) NULL, group_id INT(11) NULL, encryption_key VARCHAR(50) NOT NULL, message_text VARCHAR(10000) NOT NULL, is_forwarded TINYINT(1) DEFAULT 0, forwarded_from_id INT(11) NULL, have_attachment TINYINT(1) DEFAULT 0, downloaded TINYINT(1) DEFAULT 0, attachment_url VARCHAR(10000) DEFAULT '', sender_delete TINYINT(1) DEFAULT 0, receiver_delete TINYINT(1) DEFAULT 0, send_time DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), FOREIGN KEY (sender_id) REFERENCES accounts(id), FOREIGN KEY (receiver_id) REFERENCES accounts(id), FOREIGN KEY (forwarded_from_id) REFERENCES accounts(id), FOREIGN KEY (group_id) REFERENCES chat_groups(id))";
           mysqli_query($connection, $query);
         }
 		$users_blacklist_table = mysqli_query($connection, "SELECT 1 from users_blacklist LIMIT 1");
@@ -159,6 +164,7 @@
           "ALTER TABLE chat_groups ADD COLUMN creator_id INT(11)",
 		      "ALTER TABLE chat_groups ADD COLUMN blocked TINYINT(1) DEFAULT 0",
           "ALTER TABLE chat_groups ADD COLUMN block_type INT(11) DEFAULT 0",
+          "ALTER TABLE chat_groups ADD COLUMN anyone_join INT(1) DEFAULT 0",
           "ALTER TABLE chat_groups ADD COLUMN created_time DATETIME DEFAULT CURRENT_TIMESTAMP",
           "ALTER TABLE chat_groups ADD FOREIGN KEY (creator_id) REFERENCES accounts(id)"
           );
@@ -169,7 +175,7 @@
         }
         else
         {
-          $query = "CREATE TABLE IF NOT EXISTS chat_groups(id INT(11) AUTO_INCREMENT, is_active TINYINT(1) DEFAULT 1, username VARCHAR(255) DEFAULT '', picture_url VARCHAR(1000) DEFAULT '', display_name VARCHAR(255), description VARCHAR(1000) DEFAULT '', creator_id INT(11), blocked TINYINT(1) DEFAULT 0, block_type INT(11) DEFAULT 0, created_time DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), FOREIGN KEY (creator_id) REFERENCES accounts(id))";
+          $query = "CREATE TABLE IF NOT EXISTS chat_groups(id INT(11) AUTO_INCREMENT, is_active TINYINT(1) DEFAULT 1, username VARCHAR(255) DEFAULT '', picture_url VARCHAR(1000) DEFAULT '', display_name VARCHAR(255), description VARCHAR(1000) DEFAULT '', creator_id INT(11), blocked TINYINT(1) DEFAULT 0, block_type INT(11) DEFAULT 0, anyone_join INT(1) DEFAULT 0, created_time DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), FOREIGN KEY (creator_id) REFERENCES accounts(id))";
           mysqli_query($connection, $query);
         }
 		  $chat_group_members_table = mysqli_query($connection, "SELECT 1 from chat_group_members LIMIT 1");
@@ -182,6 +188,7 @@
 		      "ALTER TABLE chat_group_members ADD COLUMN group_id INT(11)",
           "ALTER TABLE chat_group_members ADD COLUMN member_id INT(11)",
 		      "ALTER TABLE chat_group_members ADD COLUMN can_send_message INT(1) DEFAULT 1",
+          "ALTER TABLE chat_group_members ADD COLUMN join_requested INT(1) DEFAULT 0",
           "ALTER TABLE chat_group_members ADD COLUMN joined_time DATETIME DEFAULT CURRENT_TIMESTAMP",
           "ALTER TABLE chat_group_members ADD FOREIGN KEY (group_id) REFERENCES chat_groups(id)",
 		      "ALTER TABLE chat_group_members ADD FOREIGN KEY (member_id) REFERENCES accounts(id)"
@@ -193,7 +200,7 @@
         }
         else
         {
-          $query = "CREATE TABLE IF NOT EXISTS chat_group_members(id INT(11) AUTO_INCREMENT, is_active TINYINT(1) DEFAULT 1, role INT(11) DEFAULT 0, username VARCHAR(255), group_id INT(11), member_id INT(11), can_send_message INT(1) DEFAULT 1, joined_time DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), FOREIGN KEY (member_id) REFERENCES accounts(id), FOREIGN KEY (group_id) REFERENCES chat_groups(id))";
+          $query = "CREATE TABLE IF NOT EXISTS chat_group_members(id INT(11) AUTO_INCREMENT, is_active TINYINT(1) DEFAULT 1, role INT(11) DEFAULT 0, username VARCHAR(255), group_id INT(11), member_id INT(11), can_send_message INT(1) DEFAULT 1, join_requested INT(1) DEFAULT 0, joined_time DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), FOREIGN KEY (member_id) REFERENCES accounts(id), FOREIGN KEY (group_id) REFERENCES chat_groups(id))";
           mysqli_query($connection, $query);
         }
         $messages_views_table = mysqli_query($connection, "SELECT 1 from messages_views LIMIT 1");
@@ -874,7 +881,7 @@
 
   function generateEncryptionKeys() 
   {
-    document.getElementById("aes_key").value = generateKey(getRndomInteger(25, 32));
+    document.getElementById("aes_key").value = generateKey(getRndomInteger(8, 20));
     document.getElementById("md5_key").value = generateKey(getRndomInteger(5, 15));
   }
 
