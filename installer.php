@@ -1,9 +1,20 @@
 <?php
   ini_set('display_errors', '0');
+  function get_version()
+  {
+    return "1.0";
+  }
+  function get_repo_source()
+  {
+    return "https://raw.githubusercontent.com/developers-hub-org/unity-http-networking/main/src/";
+  }
   if (!empty($_POST))
   {
+    $delete_project = isset($_POST['delete_project']) && !is_null($_POST['delete_project']) && !empty($_POST['delete_project']);
+    $update_project = isset($_POST['update_project']) && !is_null($_POST['update_project']) && !empty($_POST['update_project']);
     if(isset($_POST['project_name']) && isset($_POST['database_name']) && isset($_POST['database_user']) && isset($_POST['database_host']) && isset($_POST['database_pass']) && isset($_POST['aes_key']) && isset($_POST['md5_key']))
     {
+      $delete_after = isset($_POST['delete_after']) && $_POST['delete_after'] == "YES";
       $project = trim($_POST['project_name']);
       $database = trim($_POST['database_name']);
       $username = trim($_POST['database_user']);
@@ -11,7 +22,46 @@
       $host = trim($_POST['database_host']);
       $aes = trim($_POST['aes_key']);
       $md5 = trim($_POST['md5_key']);
-	    unset($_POST);
+      if($delete_project)
+      {
+        $base_path = get_base_path();
+        $config_path = $base_path['private_path'] . "unity_projects" . DIRECTORY_SEPARATOR . $_POST['delete_project'] . DIRECTORY_SEPARATOR . "config.php";
+        if (file_exists($config_path))
+        {
+          $project_data = file_get_contents($config_path);
+          $database = get_defined_php_value($project_data, "DB_NAME");
+          $username = get_defined_php_value($project_data, "DB_USER");
+          $password = get_defined_php_value($project_data, "DB_PASSWORD");
+          $host = get_defined_php_value($project_data, "DB_HOST");
+          remove_dir($base_path['private_path'] . "unity_projects" . DIRECTORY_SEPARATOR . $_POST['delete_project']);
+          remove_dir($base_path['public_path'] . "unity_projects" . DIRECTORY_SEPARATOR . $_POST['delete_project']);
+          $connection = mysqli_connect($host, $username, $password, $database);
+          if(!mysqli_connect_errno())
+          {
+            mysqli_query($connection, "DROP DATABASE $database");
+          }
+        }
+        $URI = $_SERVER['REQUEST_URI'];
+        header("location:$URI");
+        header("Refresh:0");
+        exit();
+      }
+      if($update_project)
+      {
+        $config_path = get_base_path()['private_path'] . "unity_projects" . DIRECTORY_SEPARATOR . $_POST['update_project'] . DIRECTORY_SEPARATOR . "config.php";
+        if (file_exists($config_path))
+        {
+          $project_data = file_get_contents($config_path);
+          $project = get_defined_php_value($project_data, "PROJECT_NAME");
+          $database = get_defined_php_value($project_data, "DB_NAME");
+          $username = get_defined_php_value($project_data, "DB_USER");
+          $password = get_defined_php_value($project_data, "DB_PASSWORD");
+          $host = get_defined_php_value($project_data, "DB_HOST");
+          $aes = get_defined_php_value($project_data, "AES_PASSWORD");
+          $md5 = get_defined_php_value($project_data, "MD5_PASSWORD");
+        }
+      }
+      unset($_POST);
       $connection = mysqli_connect($host, $username, $password, $database);
       if(mysqli_connect_errno())
       {
@@ -267,6 +317,11 @@
             {
               $api_link = "http://localhost/unity_projects/" . $project_name . "/api.php";
             }
+            $title = "Installation has been completed successfully.";
+            if($update_project)
+            {
+              $title = "Project has been updated successfully.";
+            }
             echo "
             <html>
             <head>
@@ -284,7 +339,7 @@
 				<br/>
 				<br/>
                 <div class=\"alert\">
-                  Installation has been completed successfully.
+                $title
                 </div>
                 <div class=\"alert\">
                   API Link: <strong>" . $api_link . "</strong>
@@ -303,7 +358,10 @@
               ."</div>
             </body>
             ";
-            unlink(__FILE__);
+            if($delete_after)
+            {
+              unlink(__FILE__);
+            }
           }
           else
           {
@@ -331,46 +389,30 @@
   function download_repository($public_path, $private_path, $project_name_original, $project_name, $database, $username, $password, $aes, $md5, $host)
   {
 	
-	set_time_limit(120);
-	
-	if ($private_path != $public_path && !file_exists($private_path)) 
-	{
-		mkdir($private_path, 0777, true);
-	}
-	if (!file_exists($public_path)) 
-	{
-		mkdir($public_path, 0777, true);
-	}
+    set_time_limit(120);
+    
+    if ($private_path != $public_path && !file_exists($private_path)) 
+    {
+      mkdir($private_path, 0777, true);
+    }
+    if (!file_exists($public_path)) 
+    {
+      mkdir($public_path, 0777, true);
+    }
     if (!file_exists($private_path . "templates")) 
     {
       mkdir($private_path . "templates", 0777, true);
     }
 	
-    $repository_link = "https://raw.githubusercontent.com/developers-hub-org/unity-http-networking/main/src/";
-	/*
-	$files_to_download = array(
-		$repository_link . "api.php" => $public_path . "api.php",
-		$repository_link . "files.ini" => $public_path . "files.ini",
-		$repository_link . "core.php" => $private_path . "api.php",
-		$repository_link . "authentication.php" => $private_path . "authentication.php",
-		$repository_link . "messaging.php" => $private_path . "messaging.php",
-		$repository_link . "config.php" => $private_path . "config.php",
-		$repository_link . "extentions.php" => $private_path . "extentions.php",
-		$repository_link . "encryption.php" => $private_path . "encryption.php",
-		$repository_link . "connection.php" => $private_path . "connection.php",
-		$repository_link . "control.php" => $private_path . "control.php",
-		$repository_link . "response.php" => $private_path . "response.php",
-		$repository_link . "templates/email_verifIcation_code_template.html" => $private_path . "templates/email_verification_code_template.html"
-	);
-	*/
-	
+    $repository_link = get_repo_source();
+
     if(file_exists($public_path . "api.php")) {unlink($public_path . "api.php");}
     $downloaded = download_file($repository_link . "api.php", $public_path);
     if(!$downloaded){return false;}
 	
     if(file_exists($private_path . "core.php")) {unlink($private_path . "core.php");}
     $downloaded = download_file($repository_link . "core.php", $private_path);
-	if(!$downloaded){return false;}
+	  if(!$downloaded){return false;}
 	
     if(file_exists($private_path . "templates/" . "verification_code_template.html")) {unlink($private_path . "templates/" . "verification_code_template.html");}
     $downloaded = download_file($repository_link . "templates/verifIcation_code_template.html", $private_path . "templates/");
@@ -400,10 +442,12 @@
     $downloaded = download_file($repository_link . "config.php", $private_path);
     if(!$downloaded){return false;}
 
+  $v = get_version();
+
     $confog_data = "
 <?php
 	define('PROJECT_NAME', '".$project_name_original."');
-	define('API_VERSION', '1.0');
+	define('API_VERSION', '$v');
 	define('DB_NAME', '".$database."');
 	define('DB_USER', '".$username."');
 	define('DB_PASSWORD', '".$password."');
@@ -442,41 +486,53 @@
   function download_file($url, $dir)
   {
     $file_name = basename($url);
-	$data = download_file_by_curl($url, 10);
-	if(file_put_contents($dir . $file_name, $data))
-	{
-		chmod($dir . $file_name, 0600);
-		return true;
-	}
-	/*
-	if(ini_get('allow_url_fopen')) 
-	{
-		
-	}
-	else
-	{
-		if(file_put_contents($dir . $file_name, file_get_contents($url)))
-		{
-			chmod($dir . $file_name, 0600);
-			return true;
-		}
-	}
-	*/
-	return false;
+    $data = download_file_by_curl($url, 10);
+    if(file_put_contents($dir . $file_name, $data))
+    {
+      chmod($dir . $file_name, 0600);
+      return true;
+    }
+    /*
+    if(ini_get('allow_url_fopen')) 
+    {
+      
+    }
+    else
+    {
+      if(file_put_contents($dir . $file_name, file_get_contents($url)))
+      {
+        chmod($dir . $file_name, 0600);
+        return true;
+      }
+    }
+    */
+    return false;
   }
   
   function download_file_by_curl($url, $timeout)
   {
-	$curl = curl_init();
-	curl_setopt($curl, CURLOPT_URL, $url);
-	curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt($curl, CURLOPT_TIMEOUT, $timeout);
-	curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, $timeout);
-	$return = curl_exec($curl);
-	curl_close($curl);
-	return $return;
+    $curl = curl_init();
+    curl_setopt($curl, CURLOPT_URL, $url);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($curl, CURLOPT_TIMEOUT, $timeout);
+    curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, $timeout);
+    $return = curl_exec($curl);
+    curl_close($curl);
+    return $return;
   }
   
+  function download_file_by_fopen($url)
+  {
+    $file = fopen($url, "r");
+    $val = "";
+    while(! feof($file))
+    {
+      $val = $val . fgets($file);
+    }
+    fclose($file);
+	  return $val;
+  }
+
   function get_base_url()
   {
 	  return sprintf("%s://%s", isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off' ? 'https' : 'http', $_SERVER['SERVER_NAME']);
@@ -609,6 +665,50 @@
     ";
   }
   
+  function get_defined_php_value($string_contents, $variable_name)
+  {
+    $vars = array_map('trim', explode("define",$string_contents));
+    foreach($vars as $key => $val)
+    {
+        $a = trim($val, "(\)\'\"\;"); $k = ""; $v = "";
+        $var = explode("', '", $a);
+        if(count($var) != 2) { $var = explode("','", $a); }
+        else if(count($var) != 2) { $var = explode("' , '", $a); }
+        else if(count($var) != 2) { $var = explode("' ,'", $a); }
+        else if(count($var) != 2) { $var = explode("\" ,\"", $a); }
+        else if(count($var) != 2) { $var = explode("\",\"", $a); }
+        else if(count($var) != 2) { $var = explode("\", \"", $a); }
+        else if(count($var) != 2) { $var = explode("\" , \"", $a); }
+        if(count($var) == 2 && trim($var[0]) == $variable_name)
+        {
+          return trim($var[1]);
+        }
+    }
+    return "";
+  }
+
+  function remove_dir($dir)
+  { 
+    if (is_dir($dir))
+    { 
+      $objects = scandir($dir);
+      foreach ($objects as $object)
+      { 
+        if ($object != "." && $object != "..")
+        { 
+          if (is_dir($dir. DIRECTORY_SEPARATOR .$object) && !is_link($dir."/".$object))
+          {
+            remove_dir($dir. DIRECTORY_SEPARATOR .$object);}
+          else
+          {
+            unlink($dir. DIRECTORY_SEPARATOR .$object);
+          }
+        } 
+      }
+      rmdir($dir); 
+    } 
+  }
+
   function generate_random_string($length)
   {
     $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-';
@@ -793,7 +893,7 @@
                     </td>
                 </tr>
               </table>
-                <div class="title">Unity Server Installer</div><br/>
+                <div class="title">Unity Server Installer v<?php echo get_version(); ?></div><br/>
                   <form id="dataForm" action="?" method="post" autocomplete="off">
                     <input type="text" id="project_name" name="project_name" placeholder="Project Name ..."><br/>
                     <input type="hidden" id="aes_key" name="aes_key" placeholder="AES Encryption Key ..."><!--<br/>-->
@@ -802,13 +902,17 @@
                     <input type="text" id="database_name" name="database_name" placeholder="Database Name ..."><br/>
                     <input type="text" id="database_user" name="database_user" placeholder="Database Username ..."><br/>
                     <input type="text" id="database_pass" name="database_pass" placeholder="Database Password ..."><br/>
+                    <input type="hidden" id="delete_after" name="delete_after" value="1" />
+                    <input type="hidden" id="update_project" name="update_project" value="" />
+                    <input type="hidden" id="delete_project" name="delete_project" value="" />
                   </form>
 				  <table width="100%">
 					<tr>
-						<td width="50%" align=Left>
-						<!-- <button id="generate_key" class="button-git" role="button" onclick="generateEncryptionKeys()">Generate Encryption Keys</button> -->
+						<td width="75%" align=Left>
+						  <input type="checkbox" id="delete_after_check" name="delete_after_check" value="1" checked>
+              <label> Delete installer when finished</label><br>
 						</td>
-						<td width="50%" align=right>
+						<td width="25%" align=right>
 						<button id="confirm_install" class="button-git" role="button" onclick="confirmInstall()">Install</button><br/>
 						</td>
 					</tr>
@@ -819,6 +923,67 @@
                 <div class="opt">
                   
                 </div>
+         <table width="100%">
+          <?php   
+            $projects = get_projects_table();
+            if(!empty($projects))
+            {
+              echo("<hr><br/> Installed Projects" . $projects . "");
+            }
+            function get_projects_table()
+            {
+              $projects = "";
+              $path = get_base_path();
+              $repository_version = get_version();
+              if($path != null)
+              {
+                $private_path = $path['private_path'] . "unity_projects" . DIRECTORY_SEPARATOR;
+                $ds = DIRECTORY_SEPARATOR;
+                if (file_exists($private_path))
+                {
+                  $dir = new DirectoryIterator($private_path);
+                  foreach ($dir as $fileinfo)
+                  {
+                    if (!$fileinfo->isDot())
+                    {
+                      if(!is_file($fileinfo))
+                      {
+                        $file_name = $fileinfo->getFilename();
+                        $config_path = $private_path . $file_name . DIRECTORY_SEPARATOR . "config.php";
+                        if (file_exists($config_path))
+                        {
+                          $project_version = get_defined_php_value(file_get_contents($config_path), "API_VERSION");
+                          $btn = "<button class=\"button-git\" role=\"button\" value=\"$file_name\" onclick=\"projectUpdate(this)\">Update</button><br/>";
+                          if($project_version == $repository_version)
+                          {
+                            $btn = "";
+                          }
+                        }
+                        $project = "<tr>
+                        <td width=\"45%\" align=Left>
+                        $file_name
+                        </td>
+                        <td width=\"5%\" align=Center>
+                        $project_version
+                        </td>
+                        <td width=\"25%\" align=right>
+                        $btn
+                        </td>
+                        <td width=\"25%\" align=right>
+                        <button class=\"button-git\" role=\"button\" value=\"$file_name\" onclick=\"projectDelete(this)\">Delete</button><br/>
+                        </td>
+                        </tr>";
+                        $projects = $projects . $project;
+                      }
+                    }
+                  }
+                }
+              }
+              return $projects;
+            }
+          ?>
+        </table>
+        <br/>
             </div>
         </div>
     </body>
@@ -836,6 +1001,7 @@
     var host = document.getElementById("database_host").value.trim();
     var aes = document.getElementById("aes_key").value.trim();
     var md5 = document.getElementById("md5_key").value.trim();
+    var checkbox = document.getElementById("delete_after_check").checked;
     if (isStringNullOrEmpty(project)) 
     {
 	    displayError("Project name can not be empty.");
@@ -866,18 +1032,51 @@
     }
     else
     {
-      document.getElementById("confirm_install").disabled = true;
-      // document.getElementById("generate_key").disabled = true;
-      document.getElementById('project_name').readOnly = true;
-      document.getElementById('database_name').readOnly = true;
-      document.getElementById('database_user').readOnly = true;
-      document.getElementById('database_pass').readOnly = true;
-      document.getElementById('database_host').readOnly = true;
-      document.getElementById('aes_key').readOnly = true;
-      document.getElementById('md5_key').readOnly = true;
+      var buttons = document.getElementsByTagName('button');
+      for (let i = 0; i < buttons.length; i++)
+      {
+        buttons[i].disabled = true;
+      }
+      document.getElementById("delete_after").value = checkbox ? "YES" : "NO";
+      freezAll();
       document.getElementById('dataForm').submit();
-	  document.getElementById("info").innerHTML = "<br/>Installing ...";
+	    document.getElementById("info").innerHTML = "<br/>Installing ...";
     }
+  }
+
+  function freezAll() 
+  {
+    var buttons = document.getElementsByTagName('button');
+    for (let i = 0; i < buttons.length; i++)
+    {
+      buttons[i].disabled = true;
+    }
+    document.getElementById('project_name').readOnly = true;
+    document.getElementById('database_name').readOnly = true;
+    document.getElementById('database_user').readOnly = true;
+    document.getElementById('database_pass').readOnly = true;
+    document.getElementById('database_host').readOnly = true;
+    document.getElementById('aes_key').readOnly = true;
+    document.getElementById('md5_key').readOnly = true;
+    document.getElementById('delete_after_check').disabled = true;
+  }
+
+  function projectUpdate(project) 
+  {
+    generateEncryptionKeys();
+    document.getElementById('update_project').value = project.value;
+    freezAll();
+    document.getElementById('dataForm').submit();
+  }
+
+  function projectDelete(project) 
+  {
+        if (confirm("Are you sure you want to delete this project? Database and all files related to this project will be deleted."))
+        {
+          document.getElementById('delete_project').value = project.value;
+          freezAll();
+          document.getElementById('dataForm').submit();
+        }
   }
 
   function generateEncryptionKeys() 
@@ -910,7 +1109,7 @@
   
   function isAlphanumeric(str)
   {
-	return str.match(/^[0-9A-Za-z\s\-\_]+$/);
+	  return str.match(/^[0-9A-Za-z\s\-\_]+$/);
   }
   
   function displayError(message)
