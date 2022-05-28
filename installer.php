@@ -1,5 +1,5 @@
 <?php
-  //ini_set('display_errors', '0');
+  ini_set('display_errors', '0');
   if (!empty($_POST))
   {
     if(isset($_POST['project_name']) && isset($_POST['database_name']) && isset($_POST['database_user']) && isset($_POST['database_host']) && isset($_POST['database_pass']) && isset($_POST['aes_key']) && isset($_POST['md5_key']))
@@ -41,7 +41,8 @@
             "ALTER TABLE accounts ADD COLUMN score INT(11) DEFAULT 0",
             "ALTER TABLE accounts ADD COLUMN blocked TINYINT(1) DEFAULT 0",
 			      "ALTER TABLE accounts ADD COLUMN is_birthday_set TINYINT(1) DEFAULT 0",
-			      "ALTER TABLE accounts ADD COLUMN birthday DATETIME DEFAULT CURRENT_TIMESTAMP"
+            "ALTER TABLE accounts ADD COLUMN birthday DATETIME DEFAULT CURRENT_TIMESTAMP",
+            "ALTER TABLE accounts ADD COLUMN save_data TEXT DEFAULT ''"
           );
           for($i = 0; $i < count($queries); $i++) 
           {
@@ -50,7 +51,7 @@
         }
         else
         {
-          $query = "CREATE TABLE IF NOT EXISTS accounts(id INT(11) AUTO_INCREMENT, is_verified TINYINT(1) DEFAULT 0, username VARCHAR(255), password VARCHAR(255), firstname VARCHAR(255) DEFAULT '', middlename VARCHAR(255) DEFAULT '', lastname VARCHAR(255) DEFAULT '', is_password_set TINYINT(1) DEFAULT 0, email VARCHAR(255) DEFAULT '', is_email_verified TINYINT(1) DEFAULT 0, phone_number VARCHAR(255) DEFAULT '', phone_country VARCHAR(255) DEFAULT 'us', is_phone_verified TINYINT(1) DEFAULT 0, picture_url VARCHAR(1000) DEFAULT '', score INT(11) DEFAULT 0, blocked TINYINT(1) DEFAULT 0, is_birthday_set TINYINT(1) DEFAULT 0, birthday DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id))";
+          $query = "CREATE TABLE IF NOT EXISTS accounts(id INT(11) AUTO_INCREMENT, is_verified TINYINT(1) DEFAULT 0, username VARCHAR(255), password VARCHAR(255), firstname VARCHAR(255) DEFAULT '', middlename VARCHAR(255) DEFAULT '', lastname VARCHAR(255) DEFAULT '', is_password_set TINYINT(1) DEFAULT 0, email VARCHAR(255) DEFAULT '', is_email_verified TINYINT(1) DEFAULT 0, phone_number VARCHAR(255) DEFAULT '', phone_country VARCHAR(255) DEFAULT 'us', is_phone_verified TINYINT(1) DEFAULT 0, picture_url VARCHAR(1000) DEFAULT '', score INT(11) DEFAULT 0, blocked TINYINT(1) DEFAULT 0, is_birthday_set TINYINT(1) DEFAULT 0, birthday DATETIME DEFAULT CURRENT_TIMESTAMP, save_data TEXT DEFAULT '', PRIMARY KEY (id))";
           mysqli_query($connection, $query);
         }
         $sessions_table = mysqli_query($connection, "SELECT 1 from sessions LIMIT 1");
