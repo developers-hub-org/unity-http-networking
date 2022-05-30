@@ -992,7 +992,7 @@
 <script>
   function confirmInstall() 
   {
-	generateEncryptionKeys();
+	  generateEncryptionKeys();
     document.getElementById("info").innerHTML = "";
     var project = document.getElementById("project_name").value.trim();
     var database = document.getElementById("database_name").value.trim();
@@ -1064,6 +1064,8 @@
   function projectUpdate(project) 
   {
     generateEncryptionKeys();
+    var checkbox = document.getElementById("delete_after_check").checked;
+    document.getElementById("delete_after").value = checkbox ? "YES" : "NO";
     document.getElementById('update_project').value = project.value;
     freezAll();
     document.getElementById('dataForm').submit();
