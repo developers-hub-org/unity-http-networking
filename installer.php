@@ -953,6 +953,7 @@
                         if (file_exists($config_path))
                         {
                           $project_version = get_defined_php_value(file_get_contents($config_path), "API_VERSION");
+                          $project_name = get_defined_php_value(file_get_contents($config_path), "PROJECT_NAME");
                           $btn = "<button class=\"button-git\" role=\"button\" value=\"$file_name\" onclick=\"projectUpdate(this)\">Update</button><br/>";
                           if($project_version == $repository_version)
                           {
@@ -961,7 +962,7 @@
                         }
                         $project = "<tr>
                         <td width=\"45%\" align=Left>
-                        $file_name
+                        $project_name
                         </td>
                         <td width=\"5%\" align=Center>
                         $project_version
